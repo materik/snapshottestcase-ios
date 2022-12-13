@@ -15,6 +15,12 @@ public struct Device: Identifiable {
 }
 
 public extension Device {
+    func height(_ height: CGFloat) -> Device {
+        Device(name: name, width: width, height: height)
+    }
+}
+
+public extension Device {
     static let d4dot7 = Device(name: "4.7", width: 750, height: 1334, resolution: 2)
     static let d6dot1 = Device(name: "6.1", width: 1179, height: 2556, resolution: 3)
     static let d6dot7 = Device(name: "6.7", width: 1290, height: 2796, resolution: 3)
