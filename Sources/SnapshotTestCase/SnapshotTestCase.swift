@@ -11,7 +11,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
     func verifySnapshot(
         name: String? = nil,
         config: SnapshotConfig = .default,
-        renderDelay: TimeInterval = 0.4,
+        renderDelay: TimeInterval = .snapshotRenderDelay,
         file: StaticString = #file,
         line: UInt = #line,
         viewBuilder: @escaping () -> some View
@@ -29,7 +29,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
     func verifySnapshot(
         name: String? = nil,
         config: SnapshotConfig = .default,
-        renderDelay: TimeInterval = 0.4,
+        renderDelay: TimeInterval = .snapshotRenderDelay,
         file: StaticString = #file,
         line: UInt = #line,
         viewControllerBuilder: @escaping () -> some UIViewController
@@ -74,6 +74,10 @@ public extension SnapshotTestCase where Self: XCTestCase {
             return (suite: suite, name: name.prepending("\(testCaseName)_"))
         }
     }
+}
+ 
+public extension TimeInterval {
+    static var snapshotRenderDelay: TimeInterval = 0.4
 }
 
 private extension String {
