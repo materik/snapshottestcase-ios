@@ -5,7 +5,7 @@ public struct SnapshotConfig {
         public let device: Device
         public let interfaceStyle: InterfaceStyle
         
-        init(device: Device, interfaceStyle: InterfaceStyle = .light) {
+        public init(device: Device = .default, interfaceStyle: InterfaceStyle = .default) {
             self.device = device
             self.interfaceStyle = interfaceStyle
         }
@@ -23,13 +23,17 @@ public struct SnapshotConfig {
 }
 
 public extension SnapshotConfig {
-    func config(_ config: Config) -> SnapshotConfig {
+    func append(_ config: Config) -> SnapshotConfig {
         SnapshotConfig(configs + [config])
     }
     
     var count: Int {
         configs.count
     }
+}
+
+public extension SnapshotConfig {
+    static var `default` = SnapshotConfig([Config()])
 }
 
 extension SnapshotConfig.Config {

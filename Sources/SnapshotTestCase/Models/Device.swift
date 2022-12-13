@@ -19,5 +19,5 @@ public extension Device {
     static let d6dot1 = Device(name: "6.1", width: 1179, height: 2556, resolution: 3)
     static let d6dot7 = Device(name: "6.7", width: 1290, height: 2796, resolution: 3)
     
-    static var `default`: Device { .d6dot1 }
+    static var `default`: Device = .d6dot1
 }

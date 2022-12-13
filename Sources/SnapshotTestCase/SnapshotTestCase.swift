@@ -10,7 +10,7 @@ public protocol SnapshotTestCase: AnyObject { }
 public extension SnapshotTestCase where Self: XCTestCase {
     func verifySnapshot(
         name: String? = nil,
-        config: SnapshotConfig,
+        config: SnapshotConfig = .default,
         renderDelay: TimeInterval = 0.4,
         file: StaticString = #file,
         line: UInt = #line,
@@ -28,7 +28,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
 
     func verifySnapshot(
         name: String? = nil,
-        config: SnapshotConfig,
+        config: SnapshotConfig = .default,
         renderDelay: TimeInterval = 0.4,
         file: StaticString = #file,
         line: UInt = #line,

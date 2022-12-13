@@ -27,10 +27,10 @@ public class Snapshot {
 
     init() {
         guard let referencePath = LaunchEnvironment.referencePath else {
-            fatalError("Need to set \"\(LaunchEnvironment.Key.referencePath)\" in scheme environment")
+            fatalError("Need to set <\(LaunchEnvironment.Key.referencePath)> in Launch Environment")
         }
         guard let failurePath = LaunchEnvironment.failurePath else {
-            fatalError("Need to set \"\(LaunchEnvironment.Key.failurePath)\" in scheme environment")
+            fatalError("Need to set <\(LaunchEnvironment.Key.failurePath)> in Launch Environment")
         }
 
         self.referencePath = referencePath
