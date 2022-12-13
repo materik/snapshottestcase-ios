@@ -15,6 +15,10 @@ public struct Device: Identifiable {
 }
 
 public extension Device {
+    func width(_ width: CGFloat) -> Device {
+        Device(name: name, width: width, height: height)
+    }
+    
     func height(_ height: CGFloat) -> Device {
         Device(name: name, width: width, height: height)
     }
