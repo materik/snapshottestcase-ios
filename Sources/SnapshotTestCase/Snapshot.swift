@@ -1,23 +1,6 @@
 import Combine
 import UIKit
 
-enum SnapshotError: Error {
-    case loadSnapshot
-    case invalidContext
-    case takeSnapshot
-    case saveSnapshot(Error)
-    case copySnapshot(Error)
-    case deleteSnapshot(Error)
-    case pngRepresentation
-    case referenceImageDoesNotExist
-    case createFolder(Error)
-    case createView
-    case didRecord
-    case comparison(Error)
-    case referenceImageNotEqual(Double)
-    case cropSnapshot
-}
-
 public class Snapshot {
     enum Constants {
         static let imageExt: String = "png"
@@ -26,8 +9,6 @@ public class Snapshot {
     struct TestCase {
         let suite: String
         let name: String
-        let suffix: String?
-        var size: Size = .normal
         let renderDelay: TimeInterval
         let viewControllerBuilder: () -> UIViewController
     }
@@ -35,39 +16,8 @@ public class Snapshot {
     struct ExecutedTestCase {
         let suite: String
         let name: String
-        let suffix: String?
-        let config: Config
+        let config: SnapshotConfig.Config
         let snapshot: UIImage
-    }
-
-    public struct Config {
-        let device: Device
-        let style: InterfaceStyle
-        let language: Language
-    }
-
-    public enum Device: String, CaseIterable {
-        case d4dot7 = "4.7"
-        case d6dot1 = "6.1"
-        case d6dot7 = "6.7"
-    }
-
-    public enum InterfaceStyle: String, CaseIterable {
-        case dark
-        case light
-    }
-
-    public enum Language: String, CaseIterable {
-        case en
-        case se
-        case jp
-    }
-
-    public enum Size {
-        case normal
-        case height(CGFloat)
-        case width(CGFloat)
-        case custom(width: CGFloat, height: CGFloat)
     }
 
     let referencePath: String
@@ -90,13 +40,13 @@ public class Snapshot {
     }
 
     func verify(
-        test: TestCase,
-        with configs: [Config] = .default
+        testCase: TestCase,
+        with config: SnapshotConfig
     ) -> AnyPublisher<Void, SnapshotError> {
         var errors: [SnapshotError] = []
         return Publishers.Serial(
-            configs.map { config in
-                verify(test: test, with: config)
+            config.configs.map { config in
+                verify(testCase: testCase, with: config)
                     .catch { error -> AnyPublisher<Void, Never> in
                         errors.append(error)
                         return .success(())
@@ -122,17 +72,17 @@ public class Snapshot {
     }
 
     func verify(
-        test: TestCase,
-        with config: Config
+        testCase: TestCase,
+        with config: SnapshotConfig.Config
     ) -> AnyPublisher<Void, SnapshotError> {
         if recordMode {
-            return record(test: test, with: config)
+            return record(testCase: testCase, with: config)
         }
-        return test.execute(with: config)
+        return testCase.execute(with: config)
             .flatMap { [unowned self] executedTest in
-                self.loadSnapshot(from: self.referencePath, test: executedTest)
+                self.loadSnapshot(from: self.referencePath, testCase: executedTest)
                     .catch { [unowned self] error in
-                        self.saveSnapshot(to: self.failurePath, test: executedTest)
+                        self.saveSnapshot(to: self.failurePath, testCase: executedTest)
                             .flatMap { AnyPublisher<UIImage, SnapshotError>.failure(error) }
                     }
                     .map { (executedTest, $0) }
@@ -141,12 +91,12 @@ public class Snapshot {
             .flatMap { executedTest, reference in
                 executedTest.compare(with: reference, tolerance: self.tolerance)
                     .catch { [unowned self] error in
-                        self.saveSnapshot(to: self.failurePath, test: executedTest)
+                        self.saveSnapshot(to: self.failurePath, testCase: executedTest)
                             .flatMap {
                                 self.copySnapshot(
                                     from: self.referencePath,
                                     to: self.failurePath,
-                                    test: executedTest
+                                    testCase: executedTest
                                 )
                             }
                             .flatMap { AnyPublisher<Void, SnapshotError>.failure(error) }
@@ -156,14 +106,14 @@ public class Snapshot {
     }
 
     func record(
-        test: TestCase,
-        with config: Config
+        testCase: TestCase,
+        with config: SnapshotConfig.Config
     ) -> AnyPublisher<Void, SnapshotError> {
         guard recordMode else {
             return .success(())
         }
-        return test.execute(with: config)
-            .flatMap { [unowned self] in self.saveSnapshot(to: self.referencePath, test: $0) }
+        return testCase.execute(with: config)
+            .flatMap { [unowned self] in self.saveSnapshot(to: self.referencePath, testCase: $0) }
             .flatMap { AnyPublisher<Void, SnapshotError>.failure(.didRecord) }
             .eraseToAnyPublisher()
     }
@@ -172,14 +122,14 @@ public class Snapshot {
 private extension Snapshot {
     func saveSnapshot(
         to path: String,
-        test: ExecutedTestCase
+        testCase: ExecutedTestCase
     ) -> AnyPublisher<Void, SnapshotError> {
-        guard let data = test.snapshot.pngData() else {
+        guard let data = testCase.snapshot.pngData() else {
             return .failure(SnapshotError.pngRepresentation)
         }
-        return createFolder(at: path, test: test)
+        return createFolder(at: path, testCase: testCase)
             .flatMap { _ -> AnyPublisher<Void, SnapshotError> in
-                let imageUrl = self.imageUrl(path, test: test)
+                let imageUrl = self.imageUrl(path, testCase: testCase)
                 print("Saved snapshot to <\(imageUrl.absoluteString)>")
                 do {
                     try data.write(to: imageUrl)
@@ -193,7 +143,7 @@ private extension Snapshot {
 
     func deleteSnapshotIfNeeded(
         at url: URL,
-        test _: ExecutedTestCase
+        testCase _: ExecutedTestCase
     ) -> AnyPublisher<Void, SnapshotError> {
         guard FileManager.default.fileExists(atPath: url.path) else {
             return .success(())
@@ -208,9 +158,9 @@ private extension Snapshot {
 
     func loadSnapshot(
         from path: String,
-        test: ExecutedTestCase
+        testCase: ExecutedTestCase
     ) -> AnyPublisher<UIImage, SnapshotError> {
-        let imageUrl = imageUrl(path, test: test)
+        let imageUrl = imageUrl(path, testCase: testCase)
         guard FileManager.default.fileExists(atPath: imageUrl.path) else {
             return .failure(.referenceImageDoesNotExist)
         }
@@ -223,11 +173,11 @@ private extension Snapshot {
     func copySnapshot(
         from source: String,
         to destination: String,
-        test: ExecutedTestCase
+        testCase: ExecutedTestCase
     ) -> AnyPublisher<Void, SnapshotError> {
-        let sourceFile = imageUrl(source, test: test)
-        let destinationFile = imageUrl(destination, test: test, suffix: "__REF")
-        return deleteSnapshotIfNeeded(at: destinationFile, test: test)
+        let sourceFile = imageUrl(source, testCase: testCase)
+        let destinationFile = imageUrl(destination, testCase: testCase, suffix: "__REF")
+        return deleteSnapshotIfNeeded(at: destinationFile, testCase: testCase)
             .flatMap { _ -> AnyPublisher<Void, SnapshotError> in
                 do {
                     try FileManager.default.copyItem(at: sourceFile, to: destinationFile)
@@ -241,10 +191,10 @@ private extension Snapshot {
 
     private func createFolder(
         at path: String,
-        test: ExecutedTestCase
+        testCase: ExecutedTestCase
     ) -> AnyPublisher<Void, SnapshotError> {
         Future { promise in
-            let imagePath = self.imagePath(path, test: test)
+            let imagePath = self.imagePath(path, testCase: testCase)
             if FileManager.default.fileExists(atPath: imagePath.path) {
                 promise(.success(()))
             } else {
@@ -263,14 +213,14 @@ private extension Snapshot {
         .eraseToAnyPublisher()
     }
 
-    private func imagePath(_ path: String, test: ExecutedTestCase) -> URL {
+    private func imagePath(_ path: String, testCase: ExecutedTestCase) -> URL {
         URL(fileURLWithPath: path, isDirectory: true)
-            .appendingPathComponent(test.folder, isDirectory: true)
+            .appendingPathComponent(testCase.folder, isDirectory: true)
     }
 
-    private func imageUrl(_ path: String, test: ExecutedTestCase, suffix: String = "") -> URL {
-        imagePath(path, test: test)
-            .appendingPathComponent(test.filename + suffix)
+    private func imageUrl(_ path: String, testCase: ExecutedTestCase, suffix: String = "") -> URL {
+        imagePath(path, testCase: testCase)
+            .appendingPathComponent(testCase.filename + suffix)
             .appendingPathExtension(Constants.imageExt)
     }
 }
@@ -279,14 +229,13 @@ private extension Snapshot.TestCase {
     private var offsetY: CGFloat { 40.0 }
 
     func execute(
-        with config: Snapshot.Config
+        with config: SnapshotConfig.Config
     ) -> AnyPublisher<Snapshot.ExecutedTestCase, SnapshotError> {
         takeSnapshot(with: config)
             .map { snapshot in
                 Snapshot.ExecutedTestCase(
                     suite: self.suite,
                     name: self.name,
-                    suffix: self.suffix,
                     config: config,
                     snapshot: snapshot
                 )
@@ -295,33 +244,10 @@ private extension Snapshot.TestCase {
     }
 
     private func takeSnapshot(
-        with config: Snapshot.Config
+        with config: SnapshotConfig.Config
     ) -> AnyPublisher<UIImage, SnapshotError> {
         var window: UIWindow?
-        let size: CGSize = {
-            switch self.size {
-            case .normal:
-                return CGSize(
-                    width: config.device.size.width,
-                    height: config.device.size.height + offsetY
-                )
-            case .height(let height):
-                return CGSize(
-                    width: config.device.size.width,
-                    height: height + offsetY
-                )
-            case .width(let width):
-                return CGSize(
-                    width: width,
-                    height: config.device.size.height + offsetY
-                )
-            case .custom(let width, let height):
-                return CGSize(
-                    width: width,
-                    height: height + offsetY
-                )
-            }
-        }()
+        let size: CGSize = config.size + CGSize(width: 0, height: offsetY)
 
         return create(with: config, in: size)
             .do { vc, _ in
@@ -329,8 +255,6 @@ private extension Snapshot.TestCase {
                 window?.rootViewController = vc
                 window?.makeKeyAndVisible()
             }
-        // TODO
-            //.do { _ in LaunchArgumentManager.shared.language = config.language.userLanguage }
             .flatMap { _, view in renderSnapshot(view: view, in: size) }
             .do { _ in window?.removeFromSuperview() }
             .flatMap { crop($0, to: size) }
@@ -380,12 +304,12 @@ private extension Snapshot.TestCase {
     }
 
     private func create(
-        with config: Snapshot.Config,
+        with config: SnapshotConfig.Config,
         in size: CGSize
     ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
         Future { promise in
             let viewController = self.viewControllerBuilder()
-            viewController.overrideUserInterfaceStyle = config.style.overrideUserInterfaceStyle
+            viewController.overrideUserInterfaceStyle = config.interfaceStyle.overrideUserInterfaceStyle
             viewController.beginAppearanceTransition(true, animated: false)
             viewController.endAppearanceTransition()
             if let view = viewController.view {
@@ -403,12 +327,9 @@ private extension Snapshot.ExecutedTestCase {
     var filename: String {
         var filename: String = ""
         if name != "" {
-            filename += "\(name)"
+            filename += name
         }
-        if let suffix {
-            filename += "_\(suffix)"
-        }
-        filename += "_\(config.rawValue)"
+        filename += "_\(config.id)"
         return filename
     }
 
@@ -428,103 +349,4 @@ private extension Snapshot.ExecutedTestCase {
         }
         return .success(())
     }
-}
-
-private extension Snapshot.Device {
-    var size: CGSize {
-        // https://www.ios-resolution.com
-        switch self {
-        case .d4dot7: return CGSize(width: 750, height: 1334) / 2
-        case .d6dot1: return CGSize(width: 1179, height: 2556) / 3
-        case .d6dot7: return CGSize(width: 1290, height: 2796) / 3
-        }
-    }
-}
-
-private extension Snapshot.InterfaceStyle {
-    var overrideUserInterfaceStyle: UIUserInterfaceStyle {
-        switch self {
-        case .dark: return .dark
-        case .light: return .light
-        }
-    }
-}
-
-// MARK: - Snapshot.Environment
-
-private extension Snapshot {
-    enum LaunchEnvironment {
-        // swiftlint:disable nesting
-        enum Key {
-            static let referencePath: String = "snapshotReferences"
-            static let failurePath: String = "snapshotFailures"
-            static let tolerance: String = "snapshotTolerance"
-            static let recordMode: String = "-RecordingSnapshot"
-        }
-
-        static var referencePath: String? {
-            ProcessInfo.processInfo.environment[Key.referencePath]
-        }
-
-        static var failurePath: String? {
-            ProcessInfo.processInfo.environment[Key.failurePath]
-        }
-
-        static var recordMode: Bool {
-            ProcessInfo.processInfo.arguments.contains(Key.recordMode)
-        }
-
-        static var tolerance: Double {
-            guard let tolerance = ProcessInfo.processInfo.environment[Key.tolerance] else {
-                return 0
-            }
-            return Double(tolerance) ?? 0
-        }
-    }
-}
-
-extension Snapshot.Config {
-    var rawValue: String {
-        [
-            device.rawValue,
-            style.rawValue,
-            language.rawValue
-        ]
-        .joined(separator: "_")
-    }
-}
-
-public extension Array where Element == Snapshot.Config {
-    var devices: [Snapshot.Device] { map { $0.device } }
-    var styles: [Snapshot.InterfaceStyle] { map { $0.style } }
-    var count: Int { devices.count * styles.count }
-
-    static var one: [Snapshot.Config] {
-        [
-            Snapshot.Config(device: .d6dot1, style: .light, language: .en)
-        ]
-    }
-
-    static var `default`: [Snapshot.Config] {
-        [
-            Snapshot.Config(device: .d6dot1, style: .light, language: .en),
-            Snapshot.Config(device: .d6dot1, style: .dark, language: .en)
-        ]
-    }
-
-    static var all: [Snapshot.Config] {
-        [
-            Snapshot.Config(device: .d4dot7, style: .light, language: .en),
-            Snapshot.Config(device: .d6dot1, style: .light, language: .en),
-            Snapshot.Config(device: .d6dot1, style: .dark, language: .en)
-        ]
-    }
-}
-
-private func / (lhs: CGSize, rhs: CGFloat) -> CGSize {
-    CGSize(width: lhs.width / rhs, height: lhs.height / rhs)
-}
-
-private func * (lhs: CGFloat, rhs: CGSize) -> CGSize {
-    CGSize(width: lhs * rhs.width, height: lhs * rhs.height)
 }

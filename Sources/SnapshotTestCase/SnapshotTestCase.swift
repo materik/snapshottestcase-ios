@@ -9,18 +9,16 @@ public protocol SnapshotTestCase: AnyObject { }
 
 public extension SnapshotTestCase where Self: XCTestCase {
     func verifySnapshot(
-        suffix: String? = nil,
-        size: Snapshot.Size = .normal,
-        configs: [Snapshot.Config] = .default,
+        name: String? = nil,
+        config: SnapshotConfig,
         renderDelay: TimeInterval = 0.4,
         file: StaticString = #file,
         line: UInt = #line,
         viewBuilder: @escaping () -> some View
     ) throws {
         try verifySnapshot(
-            suffix: suffix,
-            size: size,
-            configs: configs,
+            name: name,
+            config: config,
             renderDelay: renderDelay,
             file: file,
             line: line,
@@ -29,34 +27,31 @@ public extension SnapshotTestCase where Self: XCTestCase {
     }
 
     func verifySnapshot(
-        suffix: String? = nil,
-        size: Snapshot.Size = .normal,
-        configs: [Snapshot.Config] = .default,
+        name: String? = nil,
+        config: SnapshotConfig,
         renderDelay: TimeInterval = 0.4,
         file: StaticString = #file,
         line: UInt = #line,
         viewControllerBuilder: @escaping () -> some UIViewController
     ) throws {
-        guard let (suite, name) = getTestCase(file: file) else {
-            return XCTFail("Was not able to parse test suite and name")
+        guard let (suite, testCaseName) = getMetadata(file: file) else {
+            return XCTFail("Was not able to parse testCase suite and name")
         }
-        let test = Snapshot.TestCase(
+        let testCase = Snapshot.TestCase(
             suite: suite,
-            name: name,
-            suffix: suffix,
-            size: size,
+            name: name ?? testCaseName,
             renderDelay: renderDelay,
             viewControllerBuilder: viewControllerBuilder
         )
         try execute(
-            snapshot.verify(test: test, with: configs),
-            timeout: TimeInterval(10 * configs.count) * renderDelay,
+            snapshot.verify(testCase: testCase, with: config),
+            timeout: TimeInterval(10 * config.count) * renderDelay,
             file: file,
             line: line
         )
     }
 
-    private func getTestCase(file: StaticString = #file) -> (suite: String, name: String)? {
+    private func getMetadata(file: StaticString = #file) -> (suite: String, name: String)? {
         let suite = "\(file)"
             .replacingOccurrences(of: Snapshot().referencePath, with: "")
             .split(separator: "/")
@@ -65,18 +60,18 @@ public extension SnapshotTestCase where Self: XCTestCase {
             .replacingOccurrences(of: "-[", with: "")
             .replacingOccurrences(of: "]", with: "")
             .replacingOccurrences(of: "Tests", with: "")
-            .replacingFirst(of: "test", with: "")
+            .replacingFirst(of: "testCase", with: "")
             .split(separator: " ")
             .map { String($0) }
         guard let suite = suite?.string,
-              let suiteName = testCase.first,
+              let testCaseName = testCase.first,
               let name = testCase.last else {
             return nil
         }
-        if suiteName == name {
-            return (suite: suite, name: suiteName)
+        if testCaseName == name {
+            return (suite: suite, name: testCaseName)
         } else {
-            return (suite: suite, name: name.prepending("\(suiteName)_"))
+            return (suite: suite, name: name.prepending("\(testCaseName)_"))
         }
     }
 }

@@ -18,6 +18,8 @@ class SnapshotViewTests: XCTestCase, SnapshotTestCase {
 }
 ```
 
+**NOTE:** Works with both `SwiftUI.View` and `UIKit.UIViewController`.
+
 ## Config
 
 ### Launch arguments
