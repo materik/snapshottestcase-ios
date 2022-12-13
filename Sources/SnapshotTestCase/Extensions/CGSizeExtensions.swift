@@ -9,5 +9,5 @@ func * (lhs: CGFloat, rhs: CGSize) -> CGSize {
 }
 
 func + (lhs: CGSize, rhs: CGSize) -> CGSize {
-    CGSize(width: lhs.width * rhs.width, height: lhs.height * rhs.height)
+    CGSize(width: lhs.width + rhs.width, height: lhs.height + rhs.height)
 }
