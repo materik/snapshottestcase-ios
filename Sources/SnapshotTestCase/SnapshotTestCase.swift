@@ -51,7 +51,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
         )
     }
 
-    private func getMetadata(file: StaticString = #file) -> (suite: String, name: String)? {
+    private func getMetadata(file: StaticString = #file) -> (suite: String, testCaseName: String)? {
         let suite = "\(file)"
             .replacingOccurrences(of: Snapshot().referencePath, with: "")
             .split(separator: "/")
@@ -60,7 +60,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
             .replacingOccurrences(of: "-[", with: "")
             .replacingOccurrences(of: "]", with: "")
             .replacingOccurrences(of: "Tests", with: "")
-            .replacingFirst(of: "testCase", with: "")
+            .replacingFirst(of: "test", with: "")
             .split(separator: " ")
             .map { String($0) }
         guard let suite = suite?.string,
@@ -69,9 +69,9 @@ public extension SnapshotTestCase where Self: XCTestCase {
             return nil
         }
         if testCaseName == name {
-            return (suite: suite, name: testCaseName)
+            return (suite: suite, testCaseName: testCaseName)
         } else {
-            return (suite: suite, name: name.prepending("\(testCaseName)_"))
+            return (suite: suite, testCaseName: name.prepending("\(testCaseName)_"))
         }
     }
 }
