@@ -5,9 +5,14 @@ public struct SnapshotConfig {
         public let device: Device
         public let interfaceStyle: InterfaceStyle
         
-        public init(device: Device = .default, interfaceStyle: InterfaceStyle = .default) {
+        public init(device: Device, interfaceStyle: InterfaceStyle) {
             self.device = device
             self.interfaceStyle = interfaceStyle
+        }
+        
+        public init() {
+            self.device = .default
+            self.interfaceStyle = .default
         }
         
         public var id: String {
@@ -27,7 +32,7 @@ public struct SnapshotConfig {
 }
 
 public extension SnapshotConfig {
-    func append(_ config: Config) -> SnapshotConfig {
+    func add(_ config: Config) -> SnapshotConfig {
         SnapshotConfig(configs + [config])
     }
     
