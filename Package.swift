@@ -3,19 +3,19 @@
 import PackageDescription
 
 let package = Package(
-    name: "SnapshotTest",
+    name: "SnapshotTestCase",
     platforms: [.iOS(.v15)],
     products: [
         .library(
-            name: "SnapshotTest",
-            targets: ["SnapshotTest"]
+            name: "SnapshotTestCase",
+            targets: ["SnapshotTestCase"]
         )
     ],
     dependencies: [
     ],
     targets: [
         .target(
-            name: "SnapshotTest",
+            name: "SnapshotTestCase",
             dependencies: []
         )
     ]
