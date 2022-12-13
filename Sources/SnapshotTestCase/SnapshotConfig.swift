@@ -17,7 +17,11 @@ public struct SnapshotConfig {
     
     public let configs: [Config]
     
-    public init(_ configs: [Config] = []) {
+    public init() {
+        configs = []
+    }
+    
+    private init(_ configs: [Config] = []) {
         self.configs = configs
     }
 }
