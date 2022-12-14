@@ -34,13 +34,13 @@ class SnapshotViewTests: XCTestCase, SnapshotTestCase {
 
   `snapshotFailures` - The folder where the failing test result will end up
 
-  `snapshotTolerance` - A double which represents how much you allow the reference and result to diff
+  `snapshotTolerance` - A double which represents how much you allow the reference and result to diff, default: 0.0
 
 ---
 
 * **TIP:** Use `$(SRCROOT)` to point the references and failures to a location in your project, don't forget to *Expand Variables Based On* your app.
 
-* **TIP:** Add your `snapshotFailures` path to your `.gitignore` file.
+* **TIP:** Add your `snapshotFailures` path to your `.gitignore` file, they are not necessary to store in version control.
 
 ### Function arguments
 
