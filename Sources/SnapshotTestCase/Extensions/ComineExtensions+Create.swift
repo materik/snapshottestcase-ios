@@ -1,12 +1,12 @@
 import Combine
 
- struct AnyObserver<Output, Failure: Error> {
+struct AnyObserver<Output, Failure: Error> {
     public let success: (Output) -> Void
     public let failure: (Failure) -> Void
     public let complete: () -> Void
 }
 
- struct Disposable {
+struct Disposable {
     let dispose: () -> Void
 
     public init(_ dispose: @escaping () -> Void) {
@@ -14,7 +14,7 @@ import Combine
     }
 }
 
- extension Publisher {
+extension Publisher {
     static func create(
         block: @escaping (AnyObserver<Output, Failure>) -> Disposable
     ) -> AnyPublisher<Output, Failure> {
@@ -69,7 +69,7 @@ private class BlockSubscription<S: Subscriber>: Subscription {
     }
 }
 
-public class CancelBag {
+class CancelBag {
     public init() { }
     deinit { cancel() }
     fileprivate var subscriptions = Set<AnyCancellable>()
@@ -82,7 +82,7 @@ public class CancelBag {
     public var isNotEmpty: Bool { !isEmpty }
 }
 
-public extension AnyCancellable {
+extension AnyCancellable {
     func store(in cancelBag: CancelBag) {
         cancelBag.subscriptions.insert(self)
     }
