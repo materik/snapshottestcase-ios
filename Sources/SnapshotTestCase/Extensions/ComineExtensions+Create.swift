@@ -1,12 +1,12 @@
 import Combine
 
-public struct AnyObserver<Output, Failure: Error> {
+ struct AnyObserver<Output, Failure: Error> {
     public let success: (Output) -> Void
     public let failure: (Failure) -> Void
     public let complete: () -> Void
 }
 
-public struct Disposable {
+ struct Disposable {
     let dispose: () -> Void
 
     public init(_ dispose: @escaping () -> Void) {
@@ -14,7 +14,7 @@ public struct Disposable {
     }
 }
 
-public extension Publisher {
+ extension Publisher {
     static func create(
         block: @escaping (AnyObserver<Output, Failure>) -> Disposable
     ) -> AnyPublisher<Output, Failure> {
