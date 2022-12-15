@@ -193,10 +193,11 @@ private extension Snapshot {
         at path: String,
         testCase: ExecutedTestCase
     ) -> AnyPublisher<Void, SnapshotError> {
-        Future { promise in
+        .create { observer in
             let imagePath = self.imagePath(path, testCase: testCase)
             if FileManager.default.fileExists(atPath: imagePath.path) {
-                promise(.success(()))
+                observer.success(())
+                observer.complete()
             } else {
                 do {
                     try FileManager.default.createDirectory(
@@ -204,11 +205,13 @@ private extension Snapshot {
                         withIntermediateDirectories: true,
                         attributes: nil
                     )
-                    promise(.success(()))
+                    observer.success(())
+                    observer.complete()
                 } catch {
-                    promise(.failure(.createFolder(error)))
+                    observer.failure(.createFolder(error))
                 }
             }
+            return Disposable { }
         }
         .eraseToAnyPublisher()
     }
@@ -307,17 +310,19 @@ private extension Snapshot.TestCase {
         with config: SnapshotConfig.Config,
         in size: CGSize
     ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
-        Future { promise in
+        .create { observer in
             let viewController = self.viewControllerBuilder()
             viewController.overrideUserInterfaceStyle = config.interfaceStyle.overrideUserInterfaceStyle
             viewController.beginAppearanceTransition(true, animated: false)
             viewController.endAppearanceTransition()
             if let view = viewController.view {
                 view.frame.size = size
-                promise(.success((viewController, view)))
+                observer.success((viewController, view))
+                observer.complete()
             } else {
-                promise(.failure(.createView))
+                observer.failure(.createView)
             }
+            return Disposable { }
         }
         .eraseToAnyPublisher()
     }
