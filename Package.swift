@@ -9,7 +9,7 @@ let package = Package(
         .library(
             name: "SnapshotTestCase",
             targets: ["SnapshotTestCase"]
-        )
+        ),
     ],
     dependencies: [
     ],
@@ -17,6 +17,6 @@ let package = Package(
         .target(
             name: "SnapshotTestCase",
             dependencies: []
-        )
+        ),
     ]
 )

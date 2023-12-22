@@ -3,7 +3,7 @@ import UIKit
 public enum InterfaceStyle: String, Identifiable {
     case light
     case dark
-    
+
     public var id: String { rawValue }
 }
 

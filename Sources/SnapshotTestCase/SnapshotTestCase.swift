@@ -75,7 +75,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
         }
     }
 }
- 
+
 public extension TimeInterval {
     static var snapshotRenderDelay: TimeInterval = 0.4
 }
@@ -88,7 +88,7 @@ private extension String {
             return self
         }
     }
-    
+
     func prepending(_ string: String) -> String {
         "\(string)\(self)"
     }

@@ -62,12 +62,6 @@ public class Snapshot {
                 return .success(())
             }
         }
-        .retry(1) { error in
-            switch error {
-            case .referenceImageNotEqual: return true
-            default: return false
-            }
-        }
         .eraseToAnyPublisher()
     }
 
@@ -309,7 +303,8 @@ private extension Snapshot.TestCase {
     ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
         Future { promise in
             let viewController = self.viewControllerBuilder()
-            viewController.overrideUserInterfaceStyle = config.interfaceStyle.overrideUserInterfaceStyle
+            viewController.overrideUserInterfaceStyle = config.interfaceStyle
+                .overrideUserInterfaceStyle
             viewController.beginAppearanceTransition(true, animated: false)
             viewController.endAppearanceTransition()
             if let view = viewController.view {
@@ -325,7 +320,7 @@ private extension Snapshot.TestCase {
 
 private extension Snapshot.ExecutedTestCase {
     var filename: String {
-        var filename: String = ""
+        var filename = ""
         if name != "" {
             filename += name
         }

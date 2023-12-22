@@ -7,11 +7,11 @@ extension Publisher {
             .setFailureType(to: Failure.self)
             .eraseToAnyPublisher()
     }
-    
+
     static func failure(_ failure: Failure) -> AnyPublisher<Output, Failure> {
         Future { $0(.failure(failure)) }.eraseToAnyPublisher()
     }
-    
+
     func wait(
         _ timeout: TimeInterval,
         on queue: DispatchQueue = .main,
@@ -31,7 +31,7 @@ extension Publisher {
         }
         .eraseToAnyPublisher()
     }
-    
+
     func `do`(_ block: @escaping (Output) -> Void) -> AnyPublisher<Output, Failure> {
         map { output in
             block(output)
@@ -56,45 +56,5 @@ extension Publishers {
         } else {
             return .success([])
         }
-    }
-}
-
-// MARK: - Publishers.RetryIf
-
-public extension Publishers {
-    struct RetryIf<P: Publisher>: Publisher {
-        public typealias Output = P.Output
-        public typealias Failure = P.Failure
-
-        let publisher: P
-        let retries: Int
-        let condition: (P.Failure) -> Bool
-
-        public func receive<S>(
-            subscriber: S
-        ) where S: Subscriber, Failure == S.Failure, Output == S.Input {
-            guard retries > 0 else {
-                return publisher.receive(subscriber: subscriber)
-            }
-
-            publisher.catch { (error: P.Failure) -> AnyPublisher<Output, Failure> in
-                if condition(error) {
-                    return RetryIf(publisher: publisher, retries: retries - 1, condition: condition)
-                        .eraseToAnyPublisher()
-                } else {
-                    return Fail(error: error).eraseToAnyPublisher()
-                }
-            }
-            .receive(subscriber: subscriber)
-        }
-    }
-}
-
-public extension Publisher {
-    func retry(
-        _ retries: Int,
-        on condition: @escaping (Failure) -> Bool
-    ) -> Publishers.RetryIf<Self> {
-        Publishers.RetryIf(publisher: self, retries: retries, condition: condition)
     }
 }
