@@ -21,10 +21,16 @@ extension Publisher {
             guard condition(output) else {
                 return .success(output)
             }
-            return Future { promise in
+            return AnyPublisher<Void, Failure>.create { observer in
+                var isCancelled: Bool = false
                 queue.asyncAfter(deadline: .now() + timeout) {
-                    promise(.success(()))
+                    guard !isCancelled else {
+                        return
+                    }
+                    observer.success(())
+                    observer.complete()
                 }
+                return Disposable { isCancelled = true }
             }
             .map { _ in output }
             .eraseToAnyPublisher()
