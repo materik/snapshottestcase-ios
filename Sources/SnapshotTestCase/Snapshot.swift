@@ -241,13 +241,13 @@ private extension Snapshot.TestCase {
         let size: CGSize = config.size + CGSize(width: 0, height: offsetY)
 
         return create(with: config, in: size)
-            .doOnMainActor { vc, _ in
+            .do { vc, _ in
                 window = UIWindow(frame: CGRect(origin: .zero, size: size))
                 window?.rootViewController = vc
                 window?.makeKeyAndVisible()
             }
             .flatMap { _, view in renderSnapshot(view: view, in: size) }
-            .doOnMainActor { _ in window?.removeFromSuperview() }
+            .do { _ in window?.removeFromSuperview() }
             .flatMap { crop($0, to: size) }
             .eraseToAnyPublisher()
     }
@@ -300,13 +300,11 @@ private extension Snapshot.TestCase {
     ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
         .createOnMainActor {
             let viewController = self.viewControllerBuilder()
-            viewController.overrideUserInterfaceStyle = config
-                .interfaceStyle
+            viewController.overrideUserInterfaceStyle = config.interfaceStyle
                 .overrideUserInterfaceStyle
             viewController.beginAppearanceTransition(true, animated: false)
             viewController.endAppearanceTransition()
             if let view = viewController.view {
-                print("!!!", config, size)
                 view.frame.size = size
                 return (viewController, view)
             } else {
@@ -344,7 +342,7 @@ private extension Snapshot.ExecutedTestCase {
 
 private extension URL {
     func appendingFolderIfNeeded(_ folder: String) -> URL {
-        guard !folder.isEmpty,
+        guard !folder.isEmpty, 
               lastPathComponent != folder,
               lastPathComponent != ".",
               lastPathComponent != ".." else {
