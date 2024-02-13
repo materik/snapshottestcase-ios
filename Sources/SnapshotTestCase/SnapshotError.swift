@@ -15,4 +15,16 @@ public enum SnapshotError: Error {
     case comparison(Error)
     case referenceImageNotEqual(Double)
     case cropSnapshot
+    case timeout(String)
+    case unknown(Error)
+}
+
+extension Error {
+    func asSnapshotError() -> SnapshotError {
+        if let error = self as? SnapshotError {
+            return error
+        } else {
+            return .unknown(self)
+        }
+    }
 }

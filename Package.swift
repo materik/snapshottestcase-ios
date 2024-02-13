@@ -1,22 +1,26 @@
-// swift-tools-version: 5.7
+// swift-tools-version: 5.9
 
 import PackageDescription
 
 let package = Package(
     name: "SnapshotTestCase",
-    platforms: [.iOS(.v15)],
+    platforms: [.iOS(.v16)],
     products: [
         .library(
             name: "SnapshotTestCase",
             targets: ["SnapshotTestCase"]
         ),
     ],
-    dependencies: [
-    ],
     targets: [
         .target(
             name: "SnapshotTestCase",
             dependencies: []
         ),
+        .testTarget(
+            name: "SnapshotTestCaseTests",
+            dependencies: [
+                "SnapshotTestCase",
+            ]
+        )
     ]
 )

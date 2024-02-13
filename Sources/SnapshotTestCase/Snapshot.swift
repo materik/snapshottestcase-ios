@@ -7,14 +7,14 @@ public class Snapshot {
     }
 
     struct TestCase {
-        let suite: String
+        let filePath: URL
         let name: String
         let renderDelay: TimeInterval
-        let viewControllerBuilder: () -> UIViewController
+        let viewControllerBuilder: @MainActor () -> UIViewController
     }
 
     struct ExecutedTestCase {
-        let suite: String
+        let filePath: URL
         let name: String
         let config: SnapshotConfig.Config
         let snapshot: UIImage
@@ -26,15 +26,8 @@ public class Snapshot {
     let tolerance: Double
 
     init() {
-        guard let referencePath = LaunchEnvironment.referencePath else {
-            fatalError("Need to set <\(LaunchEnvironment.Key.referencePath)> in Launch Environment")
-        }
-        guard let failurePath = LaunchEnvironment.failurePath else {
-            fatalError("Need to set <\(LaunchEnvironment.Key.failurePath)> in Launch Environment")
-        }
-
-        self.referencePath = referencePath
-        self.failurePath = failurePath
+        self.referencePath = LaunchEnvironment.referencePath
+        self.failurePath = LaunchEnvironment.failurePath
         self.recordMode = LaunchEnvironment.recordMode
         self.tolerance = LaunchEnvironment.tolerance
     }
@@ -211,8 +204,9 @@ private extension Snapshot {
     }
 
     private func imagePath(_ path: String, testCase: ExecutedTestCase) -> URL {
-        URL(fileURLWithPath: path, isDirectory: true)
-            .appendingPathComponent(testCase.folder, isDirectory: true)
+        testCase.filePath
+            .appendingPathComponent(path, isDirectory: true)
+            .appendingFolderIfNeeded(testCase.filePath.lastPathComponent)
     }
 
     private func imageUrl(_ path: String, testCase: ExecutedTestCase, suffix: String = "") -> URL {
@@ -231,7 +225,7 @@ private extension Snapshot.TestCase {
         takeSnapshot(with: config)
             .map { snapshot in
                 Snapshot.ExecutedTestCase(
-                    suite: self.suite,
+                    filePath: self.filePath,
                     name: self.name,
                     config: config,
                     snapshot: snapshot
@@ -304,7 +298,7 @@ private extension Snapshot.TestCase {
         with config: SnapshotConfig.Config,
         in size: CGSize
     ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
-        .create { observer in
+        .createOnMainActor {
             let viewController = self.viewControllerBuilder()
             viewController.overrideUserInterfaceStyle = config.interfaceStyle
                 .overrideUserInterfaceStyle
@@ -312,13 +306,12 @@ private extension Snapshot.TestCase {
             viewController.endAppearanceTransition()
             if let view = viewController.view {
                 view.frame.size = size
-                observer.success((viewController, view))
-                observer.complete()
+                return (viewController, view)
             } else {
-                observer.failure(.createView)
+                throw SnapshotError.createView
             }
-            return Disposable { }
         }
+        .mapError { $0.asSnapshotError() }
         .eraseToAnyPublisher()
     }
 }
@@ -333,10 +326,6 @@ private extension Snapshot.ExecutedTestCase {
         return filename
     }
 
-    var folder: String {
-        suite
-    }
-
     func compare(
         with reference: UIImage,
         tolerance: Double
@@ -348,5 +337,17 @@ private extension Snapshot.ExecutedTestCase {
             return .failure(.referenceImageNotEqual(diff))
         }
         return .success(())
+    }
+}
+
+private extension URL {
+    func appendingFolderIfNeeded(_ folder: String) -> URL {
+        guard !folder.isEmpty, 
+              lastPathComponent != folder,
+              lastPathComponent != ".",
+              lastPathComponent != ".." else {
+            return self
+        }
+        return appendingPathComponent(folder, isDirectory: true)
     }
 }

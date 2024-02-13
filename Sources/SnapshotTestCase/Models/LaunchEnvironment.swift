@@ -8,12 +8,12 @@ enum LaunchEnvironment {
         static let recordMode: String = "-RecordingSnapshot"
     }
 
-    static var referencePath: String? {
-        ProcessInfo.processInfo.environment[Key.referencePath]
+    static var referencePath: String {
+        ProcessInfo.processInfo.environment[Key.referencePath] ?? "."
     }
 
-    static var failurePath: String? {
-        ProcessInfo.processInfo.environment[Key.failurePath]
+    static var failurePath: String {
+        ProcessInfo.processInfo.environment[Key.failurePath] ?? "../_Failures"
     }
 
     static var recordMode: Bool {
