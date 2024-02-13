@@ -306,6 +306,7 @@ private extension Snapshot.TestCase {
             viewController.beginAppearanceTransition(true, animated: false)
             viewController.endAppearanceTransition()
             if let view = viewController.view {
+                print("!!!")
                 view.frame.size = size
                 return (viewController, view)
             } else {
