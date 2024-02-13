@@ -10,8 +10,8 @@ Takes a snapshot of any view in your app, stores the reference and tests that th
 
 ```swift
 class SnapshotViewTests: XCTestCase, SnapshotTestCase {
-    func test() throws {
-        try verifySnapshot {
+    func test() async throws {
+        try await verifySnapshot {
             SnapshotView()
         }
     }
@@ -30,15 +30,13 @@ class SnapshotViewTests: XCTestCase, SnapshotTestCase {
 
 * You can specify the following in your Test scheme Launch Environment:
 
-  `snapshotReferences`: The folder where the snapshot references are stored
+  `snapshotReferences`: The folder where the snapshot references are stored, default: `.`
 
-  `snapshotFailures`: The folder where the failing test result will end up
+  `snapshotFailures`: The folder where the failing test result will end up, default: `../_Failures`
 
   `snapshotTolerance`: A double which represents how much you allow the reference and result to diff, useful for CI environments, default: 0.0
 
 ---
-
-* **TIP:** Use `$(SRCROOT)` to point the references and failures to a location in your project, don't forget to *Expand Variables Based On* your app.
 
 * **TIP:** Add your `snapshotFailures` path to your `.gitignore` file, it is not necessary to be stored in version control.
 
