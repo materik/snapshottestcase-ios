@@ -37,7 +37,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
         line: Int = #line,
         viewControllerBuilder: @escaping @MainActor () -> some UIViewController
     ) async throws {
-        guard let filePath = getTestCasePath(file: file),
+        guard let filePath = getFilePath(file: file),
                 let testCaseName = getTestCaseName() else {
             return XCTFail("Was not able to parse testCase")
         }
@@ -47,16 +47,16 @@ public extension SnapshotTestCase where Self: XCTestCase {
             renderDelay: renderDelay,
             viewControllerBuilder: viewControllerBuilder
         )
-        try await execute(
-            snapshot.verify(testCase: testCase, with: config),
-            timeout: TimeInterval(10 * config.count) * renderDelay,
-            file: file,
-            function: function,
-            line: line
-        )
+        try await snapshot.verify(testCase: testCase, with: config)
+            .async(
+                timeout: TimeInterval(10 * config.count) * renderDelay,
+                file: file,
+                function: function,
+                line: line
+            )
     }
     
-    private func getTestCasePath(file: String = #file) -> String? {
+    private func getFilePath(file: String = #file) -> String? {
         file
             .split(separator: "/")
             .dropLast()
@@ -77,8 +77,8 @@ public extension SnapshotTestCase where Self: XCTestCase {
             return nil
         }
         return testCaseName == name
-        ? testCaseName
-        : name.prepending("\(testCaseName)_")
+            ? testCaseName
+            : name.prepending("\(testCaseName)_")
     }
 }
 
@@ -97,11 +97,5 @@ private extension String {
 
     func prepending(_ string: String) -> String {
         "\(string)\(self)"
-    }
-}
-
-private extension Substring {
-    var string: String {
-        String(self)
     }
 }
