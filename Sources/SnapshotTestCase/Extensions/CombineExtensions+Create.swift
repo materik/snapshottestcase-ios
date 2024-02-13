@@ -21,7 +21,7 @@ extension Publisher {
         BlockPublisher(block: block)
             .eraseToAnyPublisher()
     }
-    
+
     static func createOnMainActor<T>(_ block: @escaping @MainActor () async throws -> T)
         -> AnyPublisher<T, Error> {
         Future<T, Error> { promise in

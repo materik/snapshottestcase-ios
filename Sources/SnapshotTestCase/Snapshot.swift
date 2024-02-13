@@ -7,14 +7,14 @@ public class Snapshot {
     }
 
     struct TestCase {
-        let filePath: String
+        let filePath: URL
         let name: String
         let renderDelay: TimeInterval
         let viewControllerBuilder: @MainActor () -> UIViewController
     }
 
     struct ExecutedTestCase {
-        let filePath: String
+        let filePath: URL
         let name: String
         let config: SnapshotConfig.Config
         let snapshot: UIImage
@@ -204,8 +204,9 @@ private extension Snapshot {
     }
 
     private func imagePath(_ path: String, testCase: ExecutedTestCase) -> URL {
-        URL(fileURLWithPath: testCase.filePath, isDirectory: true)
+        testCase.filePath
             .appendingPathComponent(path, isDirectory: true)
+            .appendingFolderIfNeeded(testCase.filePath.lastPathComponent)
     }
 
     private func imageUrl(_ path: String, testCase: ExecutedTestCase, suffix: String = "") -> URL {
@@ -336,5 +337,17 @@ private extension Snapshot.ExecutedTestCase {
             return .failure(.referenceImageNotEqual(diff))
         }
         return .success(())
+    }
+}
+
+private extension URL {
+    func appendingFolderIfNeeded(_ folder: String) -> URL {
+        guard !folder.isEmpty, 
+              lastPathComponent != folder,
+              lastPathComponent != ".",
+              lastPathComponent != ".." else {
+            return self
+        }
+        return appendingPathComponent(folder, isDirectory: true)
     }
 }

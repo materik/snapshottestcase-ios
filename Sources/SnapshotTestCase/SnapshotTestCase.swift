@@ -37,13 +37,9 @@ public extension SnapshotTestCase where Self: XCTestCase {
         line: Int = #line,
         viewControllerBuilder: @escaping @MainActor () -> some UIViewController
     ) async throws {
-        guard let filePath = getFilePath(file: file),
-                let testCaseName = getTestCaseName() else {
-            return XCTFail("Was not able to parse testCase")
-        }
         let testCase = Snapshot.TestCase(
-            filePath: filePath,
-            name: name ?? testCaseName,
+            filePath: getFilePath(file: file),
+            name: name ?? getTestCaseName() ?? "Test",
             renderDelay: renderDelay,
             viewControllerBuilder: viewControllerBuilder
         )
@@ -55,13 +51,10 @@ public extension SnapshotTestCase where Self: XCTestCase {
                 line: line
             )
     }
-    
-    private func getFilePath(file: String = #file) -> String? {
-        file
-            .split(separator: "/")
-            .dropLast()
-            .joined(separator: "/")
-            .prepending("/")
+
+    private func getFilePath(file: String = #file) -> URL {
+        URL(fileURLWithPath: file)
+            .deletingLastPathComponent()
     }
 
     private func getTestCaseName() -> String? {

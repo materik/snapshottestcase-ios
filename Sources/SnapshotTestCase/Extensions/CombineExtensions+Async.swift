@@ -26,19 +26,19 @@ public extension Publisher {
                 }
                 .ignoreFailure()
                 .sink(receiveValue: { _ in })
-            
+
             DispatchQueue.main.asyncAfter(deadline: .now() + timeout) {
-                    if !hasReturned {
-                        hasReturned = true
-                        continuation.resume(
-                            throwing: SnapshotError.timeout("\(file).\(function):\(line)")
-                        )
-                    }
-                    subscriber.cancel()
+                if !hasReturned {
+                    hasReturned = true
+                    continuation.resume(
+                        throwing: SnapshotError.timeout("\(file).\(function):\(line)")
+                    )
+                }
+                subscriber.cancel()
             }
         }
     }
-    
+
     func onSuccess(_ success: @escaping (Output) -> Void) -> AnyPublisher<Output, Failure> {
         self.do(success)
     }
@@ -50,7 +50,7 @@ public extension Publisher {
         }
         .eraseToAnyPublisher()
     }
-    
+
     func ignoreFailure(
         _ failure: @escaping (Failure) -> Void = { _ in }
     ) -> AnyPublisher<Output, Never> {
