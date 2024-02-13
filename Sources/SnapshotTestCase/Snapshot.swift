@@ -298,10 +298,10 @@ private extension Snapshot.TestCase {
         with config: SnapshotConfig.Config,
         in size: CGSize
     ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
-        .createOnMainActor { self.viewControllerBuilder() }
-        .wait(renderDelay)
-        .tryMap { viewController in
-            viewController.overrideUserInterfaceStyle = config.interfaceStyle
+        .createOnMainActor {
+            let viewController = self.viewControllerBuilder()
+            viewController.overrideUserInterfaceStyle = config
+                .interfaceStyle
                 .overrideUserInterfaceStyle
             viewController.beginAppearanceTransition(true, animated: false)
             viewController.endAppearanceTransition()
