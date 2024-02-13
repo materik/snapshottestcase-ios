@@ -304,6 +304,7 @@ private extension Snapshot.TestCase {
                 .overrideUserInterfaceStyle
             viewController.beginAppearanceTransition(true, animated: false)
             viewController.endAppearanceTransition()
+            try await Task.sleep(for: .milliseconds(100))
             if let view = viewController.view {
                 view.frame.size = size
                 return (viewController, view)

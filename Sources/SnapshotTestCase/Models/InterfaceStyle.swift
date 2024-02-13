@@ -1,6 +1,6 @@
 import UIKit
 
-public enum InterfaceStyle: String, Identifiable {
+public enum InterfaceStyle: String, Identifiable, Sendable {
     case light
     case dark
 

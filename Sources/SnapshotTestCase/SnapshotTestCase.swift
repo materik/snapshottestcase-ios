@@ -7,6 +7,7 @@ let snapshot = Snapshot()
 
 public protocol SnapshotTestCase: AnyObject { }
 
+@MainActor
 public extension SnapshotTestCase where Self: XCTestCase {
     func verifySnapshot(
         name: String? = nil,
@@ -15,7 +16,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
         file: String = #file,
         function: String = #function,
         line: Int = #line,
-        viewBuilder: @escaping () -> some View
+        viewBuilder: @escaping @MainActor () -> some View
     ) async throws {
         try await verifySnapshot(
             name: name,
