@@ -7,14 +7,14 @@ public class Snapshot {
     }
 
     struct TestCase {
-        let suite: String
+        let filePath: String
         let name: String
         let renderDelay: TimeInterval
         let viewControllerBuilder: () -> UIViewController
     }
 
     struct ExecutedTestCase {
-        let suite: String
+        let filePath: String
         let name: String
         let config: SnapshotConfig.Config
         let snapshot: UIImage
@@ -211,8 +211,8 @@ private extension Snapshot {
     }
 
     private func imagePath(_ path: String, testCase: ExecutedTestCase) -> URL {
-        URL(fileURLWithPath: path, isDirectory: true)
-            .appendingPathComponent(testCase.folder, isDirectory: true)
+        URL(fileURLWithPath: testCase.filePath, isDirectory: true)
+            .appendingPathComponent(path, isDirectory: true)
     }
 
     private func imageUrl(_ path: String, testCase: ExecutedTestCase, suffix: String = "") -> URL {
@@ -231,7 +231,7 @@ private extension Snapshot.TestCase {
         takeSnapshot(with: config)
             .map { snapshot in
                 Snapshot.ExecutedTestCase(
-                    suite: self.suite,
+                    filePath: self.filePath,
                     name: self.name,
                     config: config,
                     snapshot: snapshot
@@ -331,10 +331,6 @@ private extension Snapshot.ExecutedTestCase {
         }
         filename += "_\(config.id)"
         return filename
-    }
-
-    var folder: String {
-        suite
     }
 
     func compare(

@@ -34,11 +34,12 @@ public extension SnapshotTestCase where Self: XCTestCase {
         line: UInt = #line,
         viewControllerBuilder: @escaping () -> some UIViewController
     ) throws {
-        guard let (suite, testCaseName) = getMetadata(file: file) else {
-            return XCTFail("Was not able to parse testCase suite and name")
+        guard let filePath = getTestCasePath(file: file),
+                let testCaseName = getTestCaseName() else {
+            return XCTFail("Was not able to parse testCase")
         }
         let testCase = Snapshot.TestCase(
-            suite: suite,
+            filePath: filePath,
             name: name ?? testCaseName,
             renderDelay: renderDelay,
             viewControllerBuilder: viewControllerBuilder
@@ -50,12 +51,16 @@ public extension SnapshotTestCase where Self: XCTestCase {
             line: line
         )
     }
-
-    private func getMetadata(file: StaticString = #file) -> (suite: String, testCaseName: String)? {
-        let suite = "\(file)"
-            .replacingOccurrences(of: Snapshot().referencePath, with: "")
+    
+    private func getTestCasePath(file: StaticString = #file) -> String? {
+        "\(file)"
             .split(separator: "/")
-            .first
+            .dropLast()
+            .joined(separator: "/")
+            .prepending("/")
+    }
+
+    private func getTestCaseName() -> String? {
         let testCase = name
             .replacingOccurrences(of: "-[", with: "")
             .replacingOccurrences(of: "]", with: "")
@@ -63,16 +68,13 @@ public extension SnapshotTestCase where Self: XCTestCase {
             .replacingFirst(of: "test", with: "")
             .split(separator: " ")
             .map { String($0) }
-        guard let suite = suite?.string,
-              let testCaseName = testCase.first,
+        guard let testCaseName = testCase.first,
               let name = testCase.last else {
             return nil
         }
-        if testCaseName == name {
-            return (suite: suite, testCaseName: testCaseName)
-        } else {
-            return (suite: suite, testCaseName: name.prepending("\(testCaseName)_"))
-        }
+        return testCaseName == name
+        ? testCaseName
+        : name.prepending("\(testCaseName)_")
     }
 }
 

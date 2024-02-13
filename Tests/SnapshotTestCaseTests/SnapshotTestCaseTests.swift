@@ -4,7 +4,7 @@ import SnapshotTestCase
 
 class SnapshotTestCaseTests: XCTestCase, SnapshotTestCase {
     func test() throws {
-        try  verifySnapshot {
+        try verifySnapshot {
             VStack {
                 Rectangle().foregroundColor(.blue)
                 Circle().foregroundColor(.yellow)
