@@ -26,15 +26,8 @@ public class Snapshot {
     let tolerance: Double
 
     init() {
-        guard let referencePath = LaunchEnvironment.referencePath else {
-            fatalError("Need to set <\(LaunchEnvironment.Key.referencePath)> in Launch Environment")
-        }
-        guard let failurePath = LaunchEnvironment.failurePath else {
-            fatalError("Need to set <\(LaunchEnvironment.Key.failurePath)> in Launch Environment")
-        }
-
-        self.referencePath = referencePath
-        self.failurePath = failurePath
+        self.referencePath = LaunchEnvironment.referencePath
+        self.failurePath = LaunchEnvironment.failurePath
         self.recordMode = LaunchEnvironment.recordMode
         self.tolerance = LaunchEnvironment.tolerance
     }
