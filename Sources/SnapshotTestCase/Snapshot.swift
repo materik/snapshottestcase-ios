@@ -10,7 +10,7 @@ public class Snapshot {
         let filePath: String
         let name: String
         let renderDelay: TimeInterval
-        let viewControllerBuilder: () -> UIViewController
+        let viewControllerBuilder: @MainActor () -> UIViewController
     }
 
     struct ExecutedTestCase {
@@ -304,7 +304,7 @@ private extension Snapshot.TestCase {
         with config: SnapshotConfig.Config,
         in size: CGSize
     ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
-        .create { observer in
+        .createOnMainActor {
             let viewController = self.viewControllerBuilder()
             viewController.overrideUserInterfaceStyle = config.interfaceStyle
                 .overrideUserInterfaceStyle
@@ -312,13 +312,12 @@ private extension Snapshot.TestCase {
             viewController.endAppearanceTransition()
             if let view = viewController.view {
                 view.frame.size = size
-                observer.success((viewController, view))
-                observer.complete()
+                return (viewController, view)
             } else {
-                observer.failure(.createView)
+                throw SnapshotError.createView
             }
-            return Disposable { }
         }
+        .mapError { $0.asSnapshotError() }
         .eraseToAnyPublisher()
     }
 }

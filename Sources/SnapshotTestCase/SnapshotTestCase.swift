@@ -12,15 +12,17 @@ public extension SnapshotTestCase where Self: XCTestCase {
         name: String? = nil,
         config: SnapshotConfig = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
-        file: StaticString = #file,
-        line: UInt = #line,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line,
         viewBuilder: @escaping () -> some View
-    ) throws {
-        try verifySnapshot(
+    ) async throws {
+        try await verifySnapshot(
             name: name,
             config: config,
             renderDelay: renderDelay,
             file: file,
+            function: function,
             line: line,
             viewControllerBuilder: { UIHostingController(rootView: viewBuilder()) }
         )
@@ -30,10 +32,11 @@ public extension SnapshotTestCase where Self: XCTestCase {
         name: String? = nil,
         config: SnapshotConfig = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
-        file: StaticString = #file,
-        line: UInt = #line,
-        viewControllerBuilder: @escaping () -> some UIViewController
-    ) throws {
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line,
+        viewControllerBuilder: @escaping @MainActor () -> some UIViewController
+    ) async throws {
         guard let filePath = getTestCasePath(file: file),
                 let testCaseName = getTestCaseName() else {
             return XCTFail("Was not able to parse testCase")
@@ -44,16 +47,17 @@ public extension SnapshotTestCase where Self: XCTestCase {
             renderDelay: renderDelay,
             viewControllerBuilder: viewControllerBuilder
         )
-        try execute(
+        try await execute(
             snapshot.verify(testCase: testCase, with: config),
             timeout: TimeInterval(10 * config.count) * renderDelay,
             file: file,
+            function: function,
             line: line
         )
     }
     
-    private func getTestCasePath(file: StaticString = #file) -> String? {
-        "\(file)"
+    private func getTestCasePath(file: String = #file) -> String? {
+        file
             .split(separator: "/")
             .dropLast()
             .joined(separator: "/")

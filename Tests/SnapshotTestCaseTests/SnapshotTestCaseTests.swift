@@ -3,8 +3,8 @@ import SwiftUI
 import SnapshotTestCase
 
 class SnapshotTestCaseTests: XCTestCase, SnapshotTestCase {
-    func test() throws {
-        try verifySnapshot {
+    func test() async throws {
+        try await verifySnapshot {
             VStack {
                 Rectangle().foregroundColor(.blue)
                 Circle().foregroundColor(.yellow)
