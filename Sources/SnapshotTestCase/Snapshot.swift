@@ -298,13 +298,13 @@ private extension Snapshot.TestCase {
         with config: SnapshotConfig.Config,
         in size: CGSize
     ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
-        .createOnMainActor {
-            let viewController = self.viewControllerBuilder()
+        .createOnMainActor { self.viewControllerBuilder() }
+        .wait(renderDelay)
+        .tryMap { viewController in
             viewController.overrideUserInterfaceStyle = config.interfaceStyle
                 .overrideUserInterfaceStyle
             viewController.beginAppearanceTransition(true, animated: false)
             viewController.endAppearanceTransition()
-            try await Task.sleep(for: .milliseconds(100))
             if let view = viewController.view {
                 view.frame.size = size
                 return (viewController, view)
