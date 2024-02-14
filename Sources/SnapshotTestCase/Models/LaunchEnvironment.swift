@@ -5,6 +5,7 @@ enum LaunchEnvironment {
         static let referencePath: String = "snapshotReferences"
         static let failurePath: String = "snapshotFailures"
         static let tolerance: String = "snapshotTolerance"
+        static let renderOffsetY: String = "snapshotRenderOffsetY"
         static let recordMode: String = "-RecordingSnapshot"
     }
 
@@ -25,5 +26,12 @@ enum LaunchEnvironment {
             return 0
         }
         return Double(tolerance) ?? 0
+    }
+
+    static var renderOffsetY: CGFloat {
+        guard let renderOffsetY = ProcessInfo.processInfo.environment[Key.renderOffsetY] else {
+            return 0
+        }
+        return Double(renderOffsetY) ?? 0
     }
 }

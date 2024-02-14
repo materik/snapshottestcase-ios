@@ -45,7 +45,7 @@ extension Publisher {
         }
         .eraseToAnyPublisher()
     }
-    
+
     func doOnMainActor(_ block: @escaping @MainActor (Output) -> Void)
         -> AnyPublisher<Output, Failure> {
         map { output in

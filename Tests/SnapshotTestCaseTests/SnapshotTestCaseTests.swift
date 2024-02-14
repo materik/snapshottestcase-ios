@@ -8,7 +8,7 @@ class SnapshotTestCaseTests: XCTestCase, SnapshotTestCase {
             TestView()
         }
     }
-    
+
     func test2() async throws {
         try await verifySnapshot {
             let viewController = UIHostingController(rootView: TestView())
@@ -30,7 +30,7 @@ class SnapshotTestCaseTests: XCTestCase, SnapshotTestCase {
 
 struct TestView: View {
     @Environment(\.colorScheme) var colorScheme
-    
+
     var body: some View {
         VStack {
             switch colorScheme {
@@ -38,11 +38,11 @@ struct TestView: View {
             case .dark: Text("Dark")
             @unknown default: Text("Unknown")
             }
-            
+
             Rectangle()
                 .foregroundColor(.blue)
                 .clipShape(RoundedRectangle(cornerSize: .init(width: 32, height: 32)))
-            
+
             Circle().foregroundColor(.yellow)
         }
         .edgesIgnoringSafeArea(.all)

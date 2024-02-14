@@ -2,6 +2,8 @@ import Combine
 import UIKit
 
 public class Snapshot {
+    static var renderOffsetY: CGFloat = LaunchEnvironment.renderOffsetY
+
     enum Constants {
         static let imageExt: String = "png"
     }
@@ -345,7 +347,7 @@ private extension Snapshot.ExecutedTestCase {
 
 private extension URL {
     func appendingFolderIfNeeded(_ folder: String) -> URL {
-        guard !folder.isEmpty, 
+        guard !folder.isEmpty,
               lastPathComponent != folder,
               lastPathComponent != ".",
               lastPathComponent != ".." else {
