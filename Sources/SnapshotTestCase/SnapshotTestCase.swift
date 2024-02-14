@@ -80,6 +80,10 @@ public extension TimeInterval {
     static var snapshotRenderDelay: TimeInterval = 0.4
 }
 
+public extension Snapshot {
+    static var renderOffsetY: CGFloat = 0.0
+}
+
 private extension String {
     func replacingFirst(of pattern: String, with replacement: String) -> String {
         if let range = range(of: pattern) {

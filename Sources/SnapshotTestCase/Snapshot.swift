@@ -1,10 +1,6 @@
 import Combine
 import UIKit
 
-public extension Snapshot {
-    static var renderOffsetY: CGFloat = 0.0
-}
-
 public class Snapshot {
     enum Constants {
         static let imageExt: String = "png"
