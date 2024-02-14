@@ -217,7 +217,7 @@ private extension Snapshot {
 }
 
 private extension Snapshot.TestCase {
-    private var offsetY: CGFloat { 40.0 }
+    private var offsetY: CGFloat { 0.0 }
 
     func execute(
         with config: SnapshotConfig.Config
@@ -300,12 +300,13 @@ private extension Snapshot.TestCase {
     ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
         .createOnMainActor {
             let viewController = self.viewControllerBuilder()
-            viewController.overrideUserInterfaceStyle = config.interfaceStyle
+            viewController.overrideUserInterfaceStyle = config
+                .interfaceStyle
                 .overrideUserInterfaceStyle
             viewController.beginAppearanceTransition(true, animated: false)
-            viewController.endAppearanceTransition()
             if let view = viewController.view {
                 view.frame.size = size
+                viewController.endAppearanceTransition()
                 return (viewController, view)
             } else {
                 throw SnapshotError.createView
