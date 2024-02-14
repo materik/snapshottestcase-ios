@@ -7,6 +7,7 @@ let snapshot = Snapshot()
 
 public protocol SnapshotTestCase: AnyObject { }
 
+@MainActor
 public extension SnapshotTestCase where Self: XCTestCase {
     func verifySnapshot(
         name: String? = nil,
@@ -15,7 +16,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
         file: String = #file,
         function: String = #function,
         line: Int = #line,
-        viewBuilder: @escaping () -> some View
+        viewBuilder: @escaping @MainActor () -> some View
     ) async throws {
         try await verifySnapshot(
             name: name,
@@ -33,8 +34,8 @@ public extension SnapshotTestCase where Self: XCTestCase {
         config: SnapshotConfig = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
-        function: String = #function,
-        line: Int = #line,
+        function _: String = #function,
+        line _: Int = #line,
         viewControllerBuilder: @escaping @MainActor () -> some UIViewController
     ) async throws {
         let testCase = Snapshot.TestCase(
@@ -44,12 +45,6 @@ public extension SnapshotTestCase where Self: XCTestCase {
             viewControllerBuilder: viewControllerBuilder
         )
         try await snapshot.verify(testCase: testCase, with: config)
-            .async(
-                timeout: TimeInterval(10 * config.count) * renderDelay,
-                file: file,
-                function: function,
-                line: line
-            )
     }
 
     private func getFilePath(file: String = #file) -> URL {

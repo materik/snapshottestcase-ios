@@ -1,6 +1,6 @@
 import UIKit
 
-public struct Device: Identifiable {
+public struct Device: Identifiable, Sendable {
     public let name: String
     public let width: CGFloat
     public let height: CGFloat

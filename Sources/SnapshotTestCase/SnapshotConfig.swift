@@ -1,7 +1,7 @@
 import Foundation
 
-public struct SnapshotConfig {
-    struct Config: Identifiable {
+public struct SnapshotConfig: Sendable {
+    struct Config: Identifiable, Sendable {
         let device: Device
         let interfaceStyle: InterfaceStyle
 
