@@ -34,185 +34,124 @@ public class Snapshot {
         self.tolerance = LaunchEnvironment.tolerance
     }
 
-    func verify(
-        testCase: TestCase,
-        with config: SnapshotConfig
-    ) -> AnyPublisher<Void, SnapshotError> {
-        var errors: [SnapshotError] = []
-        return Publishers.Serial(
-            config.configs.map { config in
-                verify(testCase: testCase, with: config)
-                    .catch { error -> AnyPublisher<Void, Never> in
-                        errors.append(error)
-                        return .success(())
-                    }
-                    .eraseToAnyPublisher()
+    func verify(testCase: TestCase, with config: SnapshotConfig) async throws {
+        let errors = try await config.configs
+            .tryMapAsync { config -> Error? in
+                do {
+                    try await self.verify(testCase: testCase, with: config)
+                    return nil
+                } catch {
+                    return error
+                }
             }
-        )
-        .flatMap { _ -> AnyPublisher<Void, SnapshotError> in
-            if let error = errors.first {
-                print(errors)
-                return .failure(error)
-            } else {
-                return .success(())
-            }
+            .compactMap { $0 }
+        if let error = errors.first {
+            print(errors)
+            throw error
         }
-        .eraseToAnyPublisher()
     }
 
-    func verify(
-        testCase: TestCase,
-        with config: SnapshotConfig.Config
-    ) -> AnyPublisher<Void, SnapshotError> {
+    func verify(testCase: TestCase, with config: SnapshotConfig.Config) async throws {
         if recordMode {
-            return record(testCase: testCase, with: config)
+            return try await record(testCase: testCase, with: config)
         }
-        return testCase.execute(with: config)
-            .flatMap { [unowned self] executedTest in
-                self.loadSnapshot(from: self.referencePath, testCase: executedTest)
-                    .catch { [unowned self] error in
-                        self.saveSnapshot(to: self.failurePath, testCase: executedTest)
-                            .flatMap { AnyPublisher<UIImage, SnapshotError>.failure(error) }
-                    }
-                    .map { (executedTest, $0) }
-                    .eraseToAnyPublisher()
-            }
-            .flatMap { executedTest, reference in
-                executedTest.compare(with: reference, tolerance: self.tolerance)
-                    .catch { [unowned self] error in
-                        self.saveSnapshot(to: self.failurePath, testCase: executedTest)
-                            .flatMap {
-                                self.copySnapshot(
-                                    from: self.referencePath,
-                                    to: self.failurePath,
-                                    testCase: executedTest
-                                )
-                            }
-                            .flatMap { AnyPublisher<Void, SnapshotError>.failure(error) }
-                    }
-            }
-            .eraseToAnyPublisher()
+        let testCase = try await testCase.execute(with: config)
+        let reference: UIImage
+        do {
+            reference = try await loadSnapshot(from: referencePath, executed: testCase)
+        } catch {
+            try await saveSnapshot(to: failurePath, executed: testCase)
+            throw error
+        }
+        do {
+            try await testCase.compare(with: reference, tolerance: tolerance)
+        } catch {
+            try await saveSnapshot(to: failurePath, executed: testCase)
+            try await copySnapshot(from: referencePath, to: failurePath, executed: testCase)
+            throw error
+        }
     }
 
-    func record(
-        testCase: TestCase,
-        with config: SnapshotConfig.Config
-    ) -> AnyPublisher<Void, SnapshotError> {
+    func record(testCase: TestCase, with config: SnapshotConfig.Config) async throws {
         guard recordMode else {
-            return .success(())
+            return
         }
-        return testCase.execute(with: config)
-            .flatMap { [unowned self] in self.saveSnapshot(to: self.referencePath, testCase: $0) }
-            .flatMap { AnyPublisher<Void, SnapshotError>.failure(.didRecord) }
-            .eraseToAnyPublisher()
+        let testCase = try await testCase.execute(with: config)
+        try await saveSnapshot(to: referencePath, executed: testCase)
+        throw SnapshotError.didRecord
     }
 }
 
 private extension Snapshot {
-    func saveSnapshot(
-        to path: String,
-        testCase: ExecutedTestCase
-    ) -> AnyPublisher<Void, SnapshotError> {
+    func saveSnapshot(to path: String, executed testCase: ExecutedTestCase) async throws {
         guard let data = testCase.snapshot.pngData() else {
-            return .failure(SnapshotError.pngRepresentation)
+            throw SnapshotError.pngRepresentation
         }
-        return createFolder(at: path, testCase: testCase)
-            .flatMap { _ -> AnyPublisher<Void, SnapshotError> in
-                let imageUrl = self.imageUrl(path, testCase: testCase)
-                print("Saved snapshot to <\(imageUrl.absoluteString)>")
-                do {
-                    try data.write(to: imageUrl)
-                } catch {
-                    return .failure(.saveSnapshot(error))
-                }
-                return .success(())
-            }
-            .eraseToAnyPublisher()
+        try await createFolderIfNeeded(at: path, executed: testCase)
+        let imageUrl = imageUrl(path, executed: testCase)
+        print("Saved snapshot to <\(imageUrl.absoluteString)>")
+        try data.write(to: imageUrl)
     }
 
-    func deleteSnapshotIfNeeded(
-        at url: URL,
-        testCase _: ExecutedTestCase
-    ) -> AnyPublisher<Void, SnapshotError> {
+    func deleteSnapshotIfNeeded(at url: URL) async throws {
         guard FileManager.default.fileExists(atPath: url.path) else {
-            return .success(())
+            return
         }
-        do {
-            try FileManager.default.removeItem(at: url)
-        } catch {
-            return .failure(.deleteSnapshot(error))
-        }
-        return .success(())
+        try FileManager.default.removeItem(at: url)
     }
 
     func loadSnapshot(
         from path: String,
-        testCase: ExecutedTestCase
-    ) -> AnyPublisher<UIImage, SnapshotError> {
-        let imageUrl = imageUrl(path, testCase: testCase)
+        executed testCase: ExecutedTestCase
+    ) async throws -> UIImage {
+        let imageUrl = imageUrl(path, executed: testCase)
         guard FileManager.default.fileExists(atPath: imageUrl.path) else {
-            return .failure(.referenceImageDoesNotExist)
+            throw SnapshotError.referenceImageDoesNotExist
         }
         guard let image = UIImage(contentsOfFile: imageUrl.path) else {
-            return .failure(SnapshotError.loadSnapshot)
+            throw SnapshotError.loadSnapshot
         }
-        return .success(image)
+        return image
     }
 
     func copySnapshot(
         from source: String,
         to destination: String,
-        testCase: ExecutedTestCase
-    ) -> AnyPublisher<Void, SnapshotError> {
-        let sourceFile = imageUrl(source, testCase: testCase)
-        let destinationFile = imageUrl(destination, testCase: testCase, suffix: "__REF")
-        return deleteSnapshotIfNeeded(at: destinationFile, testCase: testCase)
-            .flatMap { _ -> AnyPublisher<Void, SnapshotError> in
-                do {
-                    try FileManager.default.copyItem(at: sourceFile, to: destinationFile)
-                } catch {
-                    return .failure(.copySnapshot(error))
-                }
-                return .success(())
-            }
-            .eraseToAnyPublisher()
+        executed testCase: ExecutedTestCase
+    ) async throws {
+        let sourceFile = imageUrl(source, executed: testCase)
+        let destinationFile = imageUrl(destination, executed: testCase, suffix: "__REF")
+        try await deleteSnapshotIfNeeded(at: destinationFile)
+        try FileManager.default.copyItem(at: sourceFile, to: destinationFile)
     }
 
-    private func createFolder(
+    private func createFolderIfNeeded(
         at path: String,
-        testCase: ExecutedTestCase
-    ) -> AnyPublisher<Void, SnapshotError> {
-        .create { observer in
-            let imagePath = self.imagePath(path, testCase: testCase)
-            if FileManager.default.fileExists(atPath: imagePath.path) {
-                observer.success(())
-                observer.complete()
-            } else {
-                do {
-                    try FileManager.default.createDirectory(
-                        atPath: imagePath.path,
-                        withIntermediateDirectories: true,
-                        attributes: nil
-                    )
-                    observer.success(())
-                    observer.complete()
-                } catch {
-                    observer.failure(.createFolder(error))
-                }
-            }
-            return Disposable { }
+        executed testCase: ExecutedTestCase
+    ) async throws {
+        let imagePath = imagePath(path, executed: testCase)
+        guard !FileManager.default.fileExists(atPath: imagePath.path) else {
+            return
         }
-        .eraseToAnyPublisher()
+        try FileManager.default.createDirectory(
+            atPath: imagePath.path,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
     }
 
-    private func imagePath(_ path: String, testCase: ExecutedTestCase) -> URL {
+    private func imagePath(_ path: String, executed testCase: ExecutedTestCase) -> URL {
         testCase.filePath
             .appendingPathComponent(path, isDirectory: true)
             .appendingFolderIfNeeded(testCase.filePath.lastPathComponent)
     }
 
-    private func imageUrl(_ path: String, testCase: ExecutedTestCase, suffix: String = "") -> URL {
-        imagePath(path, testCase: testCase)
+    private func imageUrl(
+        _ path: String,
+        executed testCase: ExecutedTestCase,
+        suffix: String = ""
+    ) -> URL {
+        imagePath(path, executed: testCase)
             .appendingPathComponent(testCase.filename + suffix)
             .appendingPathExtension(Constants.imageExt)
     }
@@ -228,96 +167,71 @@ private extension Snapshot.TestCase {
         )
     }
 
-    func execute(
-        with config: SnapshotConfig.Config
-    ) -> AnyPublisher<Snapshot.ExecutedTestCase, SnapshotError> {
-        takeSnapshot(with: config)
-            .map { snapshot in
-                Snapshot.ExecutedTestCase(
-                    filePath: self.filePath,
-                    name: self.name,
-                    config: config,
-                    snapshot: snapshot
-                )
-            }
-            .eraseToAnyPublisher()
+    func execute(with config: SnapshotConfig.Config) async throws -> Snapshot.ExecutedTestCase {
+        Snapshot.ExecutedTestCase(
+            filePath: filePath,
+            name: name,
+            config: config,
+            snapshot: try await takeSnapshot(with: config)
+        )
     }
 
-    private func takeSnapshot(
-        with config: SnapshotConfig.Config
-    ) -> AnyPublisher<UIImage, SnapshotError> {
-        var window: UIWindow?
+    @MainActor
+    private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
         let size: CGSize = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
-
-        return create(with: config, in: size)
-            .doOnMainActor { vc, _ in
-                window = UIWindow(frame: CGRect(origin: .zero, size: size))
-                window?.rootViewController = vc
-                window?.makeKeyAndVisible()
-            }
-            .flatMap { _, view in renderSnapshot(view: view, in: size) }
-            .doOnMainActor { _ in window?.removeFromSuperview() }
-            .flatMap { crop($0, to: size) }
-            .eraseToAnyPublisher()
+        let (vc, view) = try create(with: config, in: size)
+        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        window.rootViewController = vc
+        window.makeKeyAndVisible()
+        let snapshot = try await renderSnapshot(view: view, in: size)
+        window.removeFromSuperview()
+        return try await crop(snapshot, to: size)
     }
 
-    private func renderSnapshot(
-        view: UIView,
-        in size: CGSize
-    ) -> AnyPublisher<UIImage, SnapshotError> {
-        AnyPublisher<Void, SnapshotError>.success(())
-            .flatMap { _ -> AnyPublisher<CGContext, SnapshotError> in
-                UIGraphicsBeginImageContextWithOptions(size, true, 1)
-                if let context = UIGraphicsGetCurrentContext() {
-                    return .success(context)
-                } else {
-                    return .failure(.invalidContext)
-                }
-            }
-            .wait(renderDelay)
-            .doOnMainActor { view.layer.render(in: $0) }
-            .wait(renderDelay)
-            .doOnMainActor { view.layer.render(in: $0) }
-            .flatMap { _ -> AnyPublisher<UIImage, SnapshotError> in
-                let image = UIGraphicsGetImageFromCurrentImageContext()
-                UIGraphicsEndImageContext()
-
-                if let validatedImage = image {
-                    return .success(validatedImage)
-                } else {
-                    return .failure(.takeSnapshot)
-                }
-            }
-            .eraseToAnyPublisher()
-    }
-
-    private func crop(_ image: UIImage, to size: CGSize) -> AnyPublisher<UIImage, SnapshotError> {
-        guard let cgImage = image.cgImage?.cropping(to: frame(size: size)) else {
-            return .failure(.cropSnapshot)
+    @MainActor
+    private func renderSnapshot(view: UIView, in size: CGSize) async throws -> UIImage {
+        UIGraphicsBeginImageContextWithOptions(size, true, 1)
+        guard let context = UIGraphicsGetCurrentContext() else {
+            throw SnapshotError.invalidContext
         }
-        return .success(UIImage(cgImage: cgImage))
+
+        try await Task.sleep(for: .seconds(renderDelay))
+        view.layer.render(in: context)
+        try await Task.sleep(for: .seconds(renderDelay))
+        view.layer.render(in: context)
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+
+        guard let image else {
+            throw SnapshotError.takeSnapshot
+        }
+        return image
     }
 
+    private func crop(_ image: UIImage, to size: CGSize) async throws -> UIImage {
+        guard let cgImage = image.cgImage?.cropping(to: frame(size: size)) else {
+            throw SnapshotError.cropSnapshot
+        }
+        return UIImage(cgImage: cgImage)
+    }
+
+    @MainActor
     private func create(
         with config: SnapshotConfig.Config,
         in size: CGSize
-    ) -> AnyPublisher<(UIViewController, UIView), SnapshotError> {
-        .createOnMainActor {
-            let viewController = self.viewControllerBuilder()
-            viewController.overrideUserInterfaceStyle = config
-                .interfaceStyle
-                .overrideUserInterfaceStyle
-            viewController.beginAppearanceTransition(true, animated: false)
-            if let view = viewController.view {
-                view.frame = frame(size: size)
-                viewController.endAppearanceTransition()
-                return (viewController, view)
-            } else {
-                throw SnapshotError.createView
-            }
+    ) throws -> (UIViewController, UIView) {
+        let viewController = viewControllerBuilder()
+        viewController.overrideUserInterfaceStyle = config
+            .interfaceStyle
+            .overrideUserInterfaceStyle
+        viewController.beginAppearanceTransition(true, animated: false)
+        viewController.endAppearanceTransition()
+        if let view = viewController.view {
+            view.frame = frame(size: size)
+            return (viewController, view)
+        } else {
+            throw SnapshotError.createView
         }
-        .mapError { $0.asSnapshotError() }
-        .eraseToAnyPublisher()
     }
 }
 
@@ -331,17 +245,13 @@ private extension Snapshot.ExecutedTestCase {
         return filename
     }
 
-    func compare(
-        with reference: UIImage,
-        tolerance: Double
-    ) -> AnyPublisher<Void, SnapshotError> {
+    func compare(with reference: UIImage, tolerance: Double) async throws {
         guard let diff = snapshot.compare(with: reference, tolerance: 1000000) else {
-            return .failure(.pngRepresentation)
+            throw SnapshotError.pngRepresentation
         }
         guard diff <= tolerance else {
-            return .failure(.referenceImageNotEqual(diff))
+            throw SnapshotError.referenceImageNotEqual(diff)
         }
-        return .success(())
     }
 }
 
