@@ -250,13 +250,13 @@ private extension Snapshot.TestCase {
         let size: CGSize = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
 
         return create(with: config, in: size)
-            .do { vc, _ in
+            .doOnMainActor { vc, _ in
                 window = UIWindow(frame: CGRect(origin: .zero, size: size))
                 window?.rootViewController = vc
                 window?.makeKeyAndVisible()
             }
             .flatMap { _, view in renderSnapshot(view: view, in: size) }
-            .do { _ in window?.removeFromSuperview() }
+            .doOnMainActor { _ in window?.removeFromSuperview() }
             .flatMap { crop($0, to: size) }
             .eraseToAnyPublisher()
     }
@@ -275,9 +275,9 @@ private extension Snapshot.TestCase {
                 }
             }
             .wait(renderDelay)
-            .do { view.layer.render(in: $0) }
+            .doOnMainActor { view.layer.render(in: $0) }
             .wait(renderDelay)
-            .do { view.layer.render(in: $0) }
+            .doOnMainActor { view.layer.render(in: $0) }
             .flatMap { _ -> AnyPublisher<UIImage, SnapshotError> in
                 let image = UIGraphicsGetImageFromCurrentImageContext()
                 UIGraphicsEndImageContext()
