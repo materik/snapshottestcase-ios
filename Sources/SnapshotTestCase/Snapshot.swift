@@ -1,6 +1,10 @@
 import Combine
 import UIKit
 
+public extension Snapshot {
+    static var renderOffsetY: CGFloat = 0.0
+}
+
 public class Snapshot {
     enum Constants {
         static let imageExt: String = "png"
@@ -217,7 +221,14 @@ private extension Snapshot {
 }
 
 private extension Snapshot.TestCase {
-    private var offsetY: CGFloat { 0.0 }
+    private func frame(size: CGSize) -> CGRect {
+        CGRect(
+            x: 0.0,
+            y: Snapshot.renderOffsetY,
+            width: size.width,
+            height: size.height - Snapshot.renderOffsetY
+        )
+    }
 
     func execute(
         with config: SnapshotConfig.Config
@@ -238,7 +249,7 @@ private extension Snapshot.TestCase {
         with config: SnapshotConfig.Config
     ) -> AnyPublisher<UIImage, SnapshotError> {
         var window: UIWindow?
-        let size: CGSize = config.size + CGSize(width: 0, height: offsetY)
+        let size: CGSize = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
 
         return create(with: config, in: size)
             .do { vc, _ in
@@ -283,12 +294,7 @@ private extension Snapshot.TestCase {
     }
 
     private func crop(_ image: UIImage, to size: CGSize) -> AnyPublisher<UIImage, SnapshotError> {
-        guard let cgImage = image.cgImage?.cropping(to: CGRect(
-            x: 0.0,
-            y: offsetY,
-            width: size.width,
-            height: size.height - offsetY
-        )) else {
+        guard let cgImage = image.cgImage?.cropping(to: frame(size: size)) else {
             return .failure(.cropSnapshot)
         }
         return .success(UIImage(cgImage: cgImage))
@@ -305,7 +311,7 @@ private extension Snapshot.TestCase {
                 .overrideUserInterfaceStyle
             viewController.beginAppearanceTransition(true, animated: false)
             if let view = viewController.view {
-                view.frame.size = size
+                view.frame = frame(size: size)
                 viewController.endAppearanceTransition()
                 return (viewController, view)
             } else {
