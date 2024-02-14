@@ -167,6 +167,7 @@ private extension Snapshot.TestCase {
         )
     }
 
+    @MainActor
     func execute(with config: SnapshotConfig.Config) async throws -> Snapshot.ExecutedTestCase {
         Snapshot.ExecutedTestCase(
             filePath: filePath,
@@ -178,10 +179,10 @@ private extension Snapshot.TestCase {
 
     @MainActor
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
-        let size: CGSize = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
-        let (vc, view) = try create(with: config, in: size)
+        let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
+        let (viewController, view) = try create(with: config, in: size)
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
-        window.rootViewController = vc
+        window.rootViewController = viewController
         window.makeKeyAndVisible()
         let snapshot = try await renderSnapshot(view: view, in: size)
         window.removeFromSuperview()
@@ -208,6 +209,7 @@ private extension Snapshot.TestCase {
         return image
     }
 
+    @MainActor
     private func crop(_ image: UIImage, to size: CGSize) async throws -> UIImage {
         guard let cgImage = image.cgImage?.cropping(to: frame(size: size)) else {
             throw SnapshotError.cropSnapshot
