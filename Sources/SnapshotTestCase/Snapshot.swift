@@ -46,7 +46,6 @@ public class Snapshot {
             }
             .compactMap { $0 }
         if let error = errors.first {
-            print(errors)
             throw error
         }
     }
@@ -195,11 +194,12 @@ private extension Snapshot.TestCase {
         guard let context = UIGraphicsGetCurrentContext() else {
             throw SnapshotError.invalidContext
         }
+        
+        try await Task.sleep(for: .seconds(renderDelay))
+        await MainActor.run {
+            view.layer.render(in: context)
+        }
 
-        try await Task.sleep(for: .seconds(renderDelay))
-        view.layer.render(in: context)
-        try await Task.sleep(for: .seconds(renderDelay))
-        view.layer.render(in: context)
         let image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
 
