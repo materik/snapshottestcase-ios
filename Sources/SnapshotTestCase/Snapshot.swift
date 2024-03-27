@@ -194,15 +194,14 @@ private extension Snapshot.TestCase {
         guard let context = UIGraphicsGetCurrentContext() else {
             throw SnapshotError.invalidContext
         }
-
+        
+        try await Task.sleep(for: .seconds(renderDelay))
         await MainActor.run {
             view.layer.render(in: context)
         }
-        try await Task.sleep(for: .seconds(renderDelay))
 
         let image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
-        try await Task.sleep(for: .seconds(renderDelay))
 
         guard let image else {
             throw SnapshotError.takeSnapshot
