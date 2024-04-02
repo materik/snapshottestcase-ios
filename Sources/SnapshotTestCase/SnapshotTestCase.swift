@@ -7,7 +7,6 @@ let snapshot = Snapshot()
 
 public protocol SnapshotTestCase: AnyObject { }
 
-@MainActor
 public extension SnapshotTestCase where Self: XCTestCase {
     func verifySnapshot(
         name: String? = nil,
