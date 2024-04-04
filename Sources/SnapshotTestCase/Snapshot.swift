@@ -64,6 +64,7 @@ public class Snapshot {
         }
         do {
             try await testCase.compare(with: reference, tolerance: tolerance)
+            try await deleteSnapshot(from: failurePath, executed: testCase)
         } catch {
             try await saveSnapshot(to: failurePath, executed: testCase)
             try await copySnapshot(from: referencePath, to: failurePath, executed: testCase)
@@ -122,6 +123,11 @@ private extension Snapshot {
         let destinationFile = imageUrl(destination, executed: testCase, suffix: "__REF")
         try await deleteSnapshotIfNeeded(at: destinationFile)
         try FileManager.default.copyItem(at: sourceFile, to: destinationFile)
+    }
+
+    func deleteSnapshot(from path: String, executed testCase: ExecutedTestCase) async throws {
+        try await deleteSnapshotIfNeeded(at: imageUrl(path, executed: testCase))
+        try await deleteSnapshotIfNeeded(at: imageUrl(path, executed: testCase, suffix: "__REF"))
     }
 
     private func createFolderIfNeeded(
