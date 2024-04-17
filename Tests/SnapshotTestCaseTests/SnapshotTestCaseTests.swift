@@ -4,13 +4,13 @@ import XCTest
 
 class SnapshotTestCaseTests: XCTestCase, SnapshotTestCase {
     func test() async throws {
-        try await verifySnapshot {
+        try await verifySnapshot(imageType: .png) {
             TestView()
         }
     }
 
     func test2() async throws {
-        try await verifySnapshot {
+        try await verifySnapshot(imageType: .png) {
             let viewController = UIHostingController(rootView: TestView())
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 let subRootView = Rectangle()

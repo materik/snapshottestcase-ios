@@ -11,6 +11,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
     func verifySnapshot(
         name: String? = nil,
         config: SnapshotConfig = .default,
+        imageType: SnapshotImageType = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
         function: String = #function,
@@ -20,6 +21,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
         try await verifySnapshot(
             name: name,
             config: config,
+            imageType: imageType,
             renderDelay: renderDelay,
             file: file,
             function: function,
@@ -31,6 +33,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
     func verifySnapshot(
         name: String? = nil,
         config: SnapshotConfig = .default,
+        imageType: SnapshotImageType = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
         function _: String = #function,
@@ -40,6 +43,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
         let testCase = Snapshot.TestCase(
             filePath: getFilePath(file: file),
             name: name ?? getTestCaseName() ?? "Test",
+            imageType: imageType,
             renderDelay: renderDelay,
             viewControllerBuilder: viewControllerBuilder
         )

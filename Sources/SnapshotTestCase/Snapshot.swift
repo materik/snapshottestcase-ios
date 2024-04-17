@@ -4,20 +4,16 @@ import UIKit
 public class Snapshot {
     static var renderOffsetY: CGFloat = LaunchEnvironment.renderOffsetY
 
-    enum Constants {
-        static let imageExt: String = "png"
-    }
-
     struct TestCase {
         let filePath: URL
         let name: String
+        let imageType: SnapshotImageType
         let renderDelay: TimeInterval
         let viewControllerBuilder: @MainActor () -> UIViewController
     }
 
     struct ExecutedTestCase {
-        let filePath: URL
-        let name: String
+        let testCase: TestCase
         let config: SnapshotConfig.Config
         let snapshot: UIImage
     }
@@ -84,8 +80,8 @@ public class Snapshot {
 
 private extension Snapshot {
     func saveSnapshot(to path: String, executed testCase: ExecutedTestCase) async throws {
-        guard let data = testCase.snapshot.pngData() else {
-            throw SnapshotError.pngRepresentation
+        guard let data = testCase.snapshot.data(testCase.testCase.imageType) else {
+            throw SnapshotError.imageData
         }
         try await createFolderIfNeeded(at: path, executed: testCase)
         let imageUrl = imageUrl(path, executed: testCase)
@@ -146,9 +142,9 @@ private extension Snapshot {
     }
 
     private func imagePath(_ path: String, executed testCase: ExecutedTestCase) -> URL {
-        testCase.filePath
+        testCase.testCase.filePath
             .appendingPathComponent(path, isDirectory: true)
-            .appendingFolderIfNeeded(testCase.filePath.lastPathComponent)
+            .appendingFolderIfNeeded(testCase.testCase.filePath.lastPathComponent)
     }
 
     private func imageUrl(
@@ -158,7 +154,7 @@ private extension Snapshot {
     ) -> URL {
         imagePath(path, executed: testCase)
             .appendingPathComponent(testCase.filename + suffix)
-            .appendingPathExtension(Constants.imageExt)
+            .appendingPathExtension(testCase.testCase.imageType.pathExtension)
     }
 }
 
@@ -175,8 +171,7 @@ private extension Snapshot.TestCase {
     @MainActor
     func execute(with config: SnapshotConfig.Config) async throws -> Snapshot.ExecutedTestCase {
         Snapshot.ExecutedTestCase(
-            filePath: filePath,
-            name: name,
+            testCase: self,
             config: config,
             snapshot: try await takeSnapshot(with: config)
         )
@@ -246,8 +241,8 @@ private extension Snapshot.TestCase {
 private extension Snapshot.ExecutedTestCase {
     var filename: String {
         var filename = ""
-        if name != "" {
-            filename += name
+        if testCase.name != "" {
+            filename += testCase.name
         }
         filename += "_\(config.id)"
         return filename
@@ -255,7 +250,7 @@ private extension Snapshot.ExecutedTestCase {
 
     func compare(with reference: UIImage, tolerance: Double) async throws {
         guard let diff = snapshot.compare(with: reference, tolerance: 1000000) else {
-            throw SnapshotError.pngRepresentation
+            throw SnapshotError.imageData
         }
         guard diff <= tolerance else {
             throw SnapshotError.referenceImageNotEqual(diff)

@@ -7,7 +7,7 @@ public enum SnapshotError: Error {
     case saveSnapshot(Error)
     case copySnapshot(Error)
     case deleteSnapshot(Error)
-    case pngRepresentation
+    case imageData
     case referenceImageDoesNotExist
     case createFolder(Error)
     case createView

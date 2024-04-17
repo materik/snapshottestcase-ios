@@ -14,8 +14,8 @@ extension UIImage {
         let referencePixelsData = UnsafeMutablePointer<Pixel>
             .allocate(capacity: referenceCGImage.width * referenceCGImage.height)
         let bitmapInfo = CGBitmapInfo(
-            rawValue: CGImageAlphaInfo.premultipliedLast
-                .rawValue & CGBitmapInfo.alphaInfoMask.rawValue
+            rawValue: CGImageAlphaInfo.premultipliedLast.rawValue
+            & CGBitmapInfo.alphaInfoMask.rawValue
         )
 
         guard let colorSpace = cgImage.colorSpace,
