@@ -187,6 +187,7 @@ private extension Snapshot.TestCase {
         let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
         let (viewController, view) = try create(with: config, in: size)
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        window.safeAreaInsets = .zero
         window.rootViewController = viewController
         window.makeKeyAndVisible()
         let snapshot = try await renderSnapshot(view: view, in: size)
