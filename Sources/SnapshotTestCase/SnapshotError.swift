@@ -15,6 +15,7 @@ public enum SnapshotError: Error {
     case comparison(Error)
     case referenceImageNotEqual(Double)
     case cropSnapshot
+    case resizeSnapshot
     case timeout(String)
     case unknown(Error)
 }
