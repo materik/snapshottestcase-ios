@@ -3,6 +3,7 @@ import UIKit
 
 public class Snapshot {
     static var renderOffsetY: CGFloat = LaunchEnvironment.renderOffsetY
+    static var renderScale: CGFloat = LaunchEnvironment.renderScale
 
     enum Constants {
         static let imageExt: String = "png"
@@ -189,9 +190,11 @@ private extension Snapshot.TestCase {
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.rootViewController = viewController
         window.makeKeyAndVisible()
-        let snapshot = try await renderSnapshot(view: view, in: size)
+        var snapshot = try await renderSnapshot(view: view, in: size)
         window.removeFromSuperview()
-        return try await crop(snapshot, to: size)
+        snapshot = try await crop(snapshot, to: size)
+        snapshot = try await resize(snapshot, to: Snapshot.renderScale)
+        return snapshot
     }
 
     @MainActor
@@ -221,6 +224,14 @@ private extension Snapshot.TestCase {
             throw SnapshotError.cropSnapshot
         }
         return UIImage(cgImage: cgImage)
+    }
+
+    @MainActor
+    private func resize(_ image: UIImage, to scale: CGFloat) async throws -> UIImage {
+        guard let image = image.resized(toScale: scale) else {
+            throw SnapshotError.resizeSnapshot
+        }
+        return image
     }
 
     @MainActor
