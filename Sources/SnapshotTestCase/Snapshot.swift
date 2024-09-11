@@ -27,12 +27,14 @@ public class Snapshot {
     let failurePath: String
     let recordMode: Bool
     let tolerance: Double
+    let interfaceStyle: InterfaceStyle?
 
     init() {
         self.referencePath = LaunchEnvironment.referencePath
         self.failurePath = LaunchEnvironment.failurePath
         self.recordMode = LaunchEnvironment.recordMode
         self.tolerance = LaunchEnvironment.tolerance
+        self.interfaceStyle = LaunchEnvironment.interfaceStyle
     }
 
     func verify(testCase: TestCase, with config: SnapshotConfig) async throws {
@@ -52,6 +54,9 @@ public class Snapshot {
     }
 
     func verify(testCase: TestCase, with config: SnapshotConfig.Config) async throws {
+        if let interfaceStyle, interfaceStyle != config.interfaceStyle {
+            return
+        }
         if recordMode {
             return try await record(testCase: testCase, with: config)
         }
