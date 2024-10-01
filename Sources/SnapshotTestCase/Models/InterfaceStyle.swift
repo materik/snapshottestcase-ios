@@ -59,7 +59,7 @@ extension UIViewController {
     func interfaceStyle(_ interfaceStyle: InterfaceStyle) -> UIViewController {
         var viewController = self
         if let hostingController = self as? AnyUIHostingController {
-            viewController = hostingController.interfaceStyle(interfaceStyle)
+            viewController = hostingController.rootViewInterfaceStyle(interfaceStyle)
         }
         viewController.overrideUserInterfaceStyle = interfaceStyle.overrideUserInterfaceStyle
         return viewController
