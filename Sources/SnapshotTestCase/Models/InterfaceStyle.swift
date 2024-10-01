@@ -82,5 +82,5 @@ extension UIHostingController: AnyUIHostingController {
 }
 
 private extension WidgetRenderingMode {
-    var rawValue: String { "\(mode)" }
+    var rawValue: String { "\(self)" }
 }
