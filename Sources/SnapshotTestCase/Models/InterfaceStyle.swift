@@ -11,7 +11,7 @@ public enum InterfaceStyle: Identifiable, Sendable {
         switch self {
         case .light: "light"
         case .dark: "dark"
-        case .widgetRenderingMode(let mode): "widget\(String(mode).uppercasedFirst)"
+        case .widgetRenderingMode(let mode): "widget\(mode.rawValue.uppercasedFirst)"
         }
     }
 
@@ -79,4 +79,8 @@ extension UIHostingController: AnyUIHostingController {
         -> UIHostingController<AnyView> {
         .init(rootView: AnyView(rootView.interfaceStyle(interfaceStyle)))
     }
+}
+
+private extension WidgetRenderingMode {
+    var rawValue: String { "\(mode)" }
 }
