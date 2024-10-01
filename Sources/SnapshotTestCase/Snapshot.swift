@@ -196,7 +196,7 @@ private extension Snapshot.TestCase {
         window.rootViewController = viewController
         window.makeKeyAndVisible()
         defer { window.removeFromSuperview() }
-        var snapshot = try await renderSnapshot(view: view, in: size)        
+        var snapshot = try await renderSnapshot(view: view, in: size)
         snapshot = try await crop(snapshot, to: size)
         snapshot = try await resize(snapshot, to: Snapshot.renderScale)
         return snapshot

@@ -1,6 +1,6 @@
+import SwiftUI
 import UIKit
 import WidgetKit
-import SwiftUI
 
 public enum InterfaceStyle: Identifiable, Sendable {
     case light
@@ -11,10 +11,10 @@ public enum InterfaceStyle: Identifiable, Sendable {
         switch self {
         case .light: "light"
         case .dark: "dark"
-        case .widgetRenderingMode(let mode): "widget_\(mode)"
+        case .widgetRenderingMode(let mode): "widget\(String(mode).uppercasedFirst)"
         }
     }
-    
+
     init?(id: String) {
         switch id {
         case InterfaceStyle.light.id: self = .light
@@ -31,12 +31,14 @@ public extension InterfaceStyle {
 extension InterfaceStyle {
     var overrideUserInterfaceStyle: UIUserInterfaceStyle {
         switch self {
-        case .dark:  .dark
-        case .light:  .light
-        case .widgetRenderingMode:  .dark
+        case .dark: .dark
+        case .light: .light
+        case .widgetRenderingMode: .dark
         }
     }
 }
+
+// MARK: Equatable
 
 extension InterfaceStyle: Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
@@ -70,8 +72,11 @@ private protocol AnyUIHostingController: UIViewController {
     func rootViewInterfaceStyle(_ interfaceStyle: InterfaceStyle) -> UIHostingController<AnyView>
 }
 
- extension UIHostingController: AnyUIHostingController {
-     fileprivate func rootViewInterfaceStyle(_ interfaceStyle: InterfaceStyle) -> UIHostingController<AnyView> {
-         .init(rootView: AnyView(rootView.interfaceStyle(interfaceStyle)))
+// MARK: - UIHostingController + AnyUIHostingController
+
+extension UIHostingController: AnyUIHostingController {
+    fileprivate func rootViewInterfaceStyle(_ interfaceStyle: InterfaceStyle)
+        -> UIHostingController<AnyView> {
+        .init(rootView: AnyView(rootView.interfaceStyle(interfaceStyle)))
     }
 }
