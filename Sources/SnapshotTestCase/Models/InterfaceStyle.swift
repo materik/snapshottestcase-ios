@@ -59,10 +59,16 @@ extension View {
 
 extension UIViewController {
     func interfaceStyle(_ interfaceStyle: InterfaceStyle) -> UIViewController {
-        var viewController = self
-        if let hostingController = self as? AnyUIHostingController {
-            viewController = hostingController.rootViewInterfaceStyle(interfaceStyle)
+        switch interfaceStyle {
+        case .widgetRenderingMode(let widgetRenderingMode):
+            if let hostingController = self as? AnyUIHostingController {
+                viewController = hostingController.rootViewInterfaceStyle(interfaceStyle)
+            }
+        default:
+            overrideUserInterfaceStyle = interfaceStyle.overrideUserInterfaceStyle
+            return self
         }
+        var viewController = self
         viewController.overrideUserInterfaceStyle = interfaceStyle.overrideUserInterfaceStyle
         return viewController
     }
@@ -77,7 +83,9 @@ private protocol AnyUIHostingController: UIViewController {
 extension UIHostingController: AnyUIHostingController {
     fileprivate func rootViewInterfaceStyle(_ interfaceStyle: InterfaceStyle)
         -> UIHostingController<AnyView> {
-        .init(rootView: AnyView(rootView.interfaceStyle(interfaceStyle)))
+        // .init(rootView: AnyView(rootView.interfaceStyle(interfaceStyle)))
+        _ = rootView.interfaceStyle(interfaceStyle)
+        return self
     }
 }
 
