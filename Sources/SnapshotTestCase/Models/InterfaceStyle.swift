@@ -59,15 +59,14 @@ extension View {
 
 extension UIViewController {
     func interfaceStyle(_ interfaceStyle: InterfaceStyle) -> UIViewController {
+        overrideUserInterfaceStyle = interfaceStyle.overrideUserInterfaceStyle
+
         switch interfaceStyle {
         case .widgetRenderingMode(let widgetRenderingMode):
             if let hostingController = self as? AnyUIHostingController {
                 return hostingController.rootViewInterfaceStyle(interfaceStyle)
-            } else {
-                return self
             }
         default:
-            overrideUserInterfaceStyle = interfaceStyle.overrideUserInterfaceStyle
             return self
         }
     }
