@@ -196,7 +196,7 @@ private extension Snapshot.TestCase {
         window.rootViewController = viewController
         window.makeKeyAndVisible()
         defer { window.removeFromSuperview() }
-        var snapshot = try await renderSnapshot(view: view, in: size)        
+        var snapshot = try await renderSnapshot(view: view, in: size)
         snapshot = try await crop(snapshot, to: size)
         snapshot = try await resize(snapshot, to: Snapshot.renderScale)
         return snapshot
@@ -244,10 +244,7 @@ private extension Snapshot.TestCase {
         with config: SnapshotConfig.Config,
         in size: CGSize
     ) throws -> (UIViewController, UIView) {
-        let viewController = viewControllerBuilder()
-        viewController.overrideUserInterfaceStyle = config
-            .interfaceStyle
-            .overrideUserInterfaceStyle
+        let viewController = viewControllerBuilder().interfaceStyle(config.interfaceStyle)
         viewController.beginAppearanceTransition(true, animated: false)
         viewController.endAppearanceTransition()
         if let view = viewController.view {

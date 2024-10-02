@@ -43,11 +43,11 @@ enum LaunchEnvironment {
         }
         return Double(renderScale) ?? 1
     }
-    
+
     static var interfaceStyle: InterfaceStyle? {
         guard let rawValue = ProcessInfo.processInfo.environment[Key.interfaceStyle] else {
             return nil
         }
-        return InterfaceStyle(rawValue: rawValue)
+        return InterfaceStyle(id: rawValue)
     }
 }
