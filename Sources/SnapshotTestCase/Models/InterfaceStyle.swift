@@ -65,6 +65,8 @@ extension UIViewController {
         case .widgetRenderingMode(let widgetRenderingMode):
             if let hostingController = self as? AnyUIHostingController {
                 return hostingController.rootViewInterfaceStyle(interfaceStyle)
+            } else {
+                return self
             }
         default:
             return self
