@@ -55,6 +55,7 @@ public extension SnapshotTestCase {
             .replacingOccurrences(of: "(", with: "")
             .replacingOccurrences(of: ")", with: "")
             .replacingFirst(of: "test", with: "")
+            .uppercasedFirst
         return testCase == "" || testCase == testSuite
             ? testSuite
             : testCase.prepending("\(testSuite)_")
