@@ -1,15 +1,14 @@
 import Combine
 import SwiftUI
 import UIKit
-import XCTest
 
 let snapshot = Snapshot()
 
 public protocol SnapshotTestCase: AnyObject { }
 
-public extension SnapshotTestCase where Self: XCTestCase {
+public extension SnapshotTestCase {
     func verifySnapshot(
-        name: String? = nil,
+        name: String = #function,
         config: SnapshotConfig = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
@@ -29,7 +28,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
     }
 
     func verifySnapshot(
-        name: String? = nil,
+        name: String = #function,
         config: SnapshotConfig = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
@@ -39,7 +38,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
     ) async throws {
         let testCase = Snapshot.TestCase(
             filePath: getFilePath(file: file),
-            name: name ?? getTestCaseName() ?? "Test",
+            name: getTestCaseName(name),
             renderDelay: renderDelay,
             viewControllerBuilder: viewControllerBuilder
         )
@@ -51,7 +50,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
             .deletingLastPathComponent()
     }
 
-    private func getTestCaseName() -> String? {
+    private func getTestCaseName(_ name: String = #function) -> String {
         let testCase = name
             .replacingOccurrences(of: "-[", with: "")
             .replacingOccurrences(of: "]", with: "")
@@ -61,7 +60,7 @@ public extension SnapshotTestCase where Self: XCTestCase {
             .map { String($0) }
         guard let testCaseName = testCase.first,
               let name = testCase.last else {
-            return nil
+            return name
         }
         return testCaseName == name
             ? testCaseName
