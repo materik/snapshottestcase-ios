@@ -35,7 +35,7 @@ public extension SnapshotTestCase {
     ) async throws {
         let testCase = Snapshot.TestCase(
             filePath: getFilePath(file: file),
-            name: name ?? getTestCaseName(function: function) ?? "Test",
+            name: name ?? getTestCaseName(file: file, function: function) ?? "Test",
             renderDelay: renderDelay,
             viewControllerBuilder: viewControllerBuilder
         )
