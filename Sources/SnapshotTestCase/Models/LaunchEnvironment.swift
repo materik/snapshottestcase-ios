@@ -48,6 +48,6 @@ enum LaunchEnvironment {
         guard let rawValue = ProcessInfo.processInfo.environment[Key.interfaceStyle] else {
             return nil
         }
-        return InterfaceStyle(rawValue: rawValue)
+        return InterfaceStyle(id: rawValue)
     }
 }

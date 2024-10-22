@@ -244,10 +244,7 @@ private extension Snapshot.TestCase {
         with config: SnapshotConfig.Config,
         in size: CGSize
     ) throws -> (UIViewController, UIView) {
-        let viewController = viewControllerBuilder()
-        viewController.overrideUserInterfaceStyle = config
-            .interfaceStyle
-            .overrideUserInterfaceStyle
+        let viewController = viewControllerBuilder().interfaceStyle(config.interfaceStyle)
         viewController.beginAppearanceTransition(true, animated: false)
         viewController.endAppearanceTransition()
         if let view = viewController.view {
