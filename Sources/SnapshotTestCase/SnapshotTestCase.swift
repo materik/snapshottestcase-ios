@@ -1,20 +1,18 @@
 import Combine
 import SwiftUI
 import UIKit
-import XCTest
 
 let snapshot = Snapshot()
 
 public protocol SnapshotTestCase: AnyObject { }
 
-public extension SnapshotTestCase where Self: XCTestCase {
+public extension SnapshotTestCase {
     func verifySnapshot(
         name: String? = nil,
         config: SnapshotConfig = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
         function: String = #function,
-        line: Int = #line,
         viewBuilder: @escaping @MainActor () -> some View
     ) async throws {
         try await verifySnapshot(
@@ -23,7 +21,6 @@ public extension SnapshotTestCase where Self: XCTestCase {
             renderDelay: renderDelay,
             file: file,
             function: function,
-            line: line,
             viewControllerBuilder: { UIHostingController(rootView: viewBuilder()) }
         )
     }
@@ -33,13 +30,12 @@ public extension SnapshotTestCase where Self: XCTestCase {
         config: SnapshotConfig = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
-        function _: String = #function,
-        line _: Int = #line,
+        function: String = #function,
         viewControllerBuilder: @escaping @MainActor () -> some UIViewController
     ) async throws {
         let testCase = Snapshot.TestCase(
             filePath: getFilePath(file: file),
-            name: name ?? getTestCaseName() ?? "Test",
+            name: name ?? getTestCaseName(file: file, function: function) ?? "Test",
             renderDelay: renderDelay,
             viewControllerBuilder: viewControllerBuilder
         )
@@ -51,38 +47,21 @@ public extension SnapshotTestCase where Self: XCTestCase {
             .deletingLastPathComponent()
     }
 
-    private func getTestCaseName() -> String? {
-        let testCase = name
-            .replacingOccurrences(of: "-[", with: "")
-            .replacingOccurrences(of: "]", with: "")
+    private func getTestCaseName(file: String = #file, function: String = #function) -> String? {
+        let testSuite = file
+            .filename
             .replacingOccurrences(of: "Tests", with: "")
+        let testCase = function
+            .replacingOccurrences(of: "(", with: "")
+            .replacingOccurrences(of: ")", with: "")
             .replacingFirst(of: "test", with: "")
-            .split(separator: " ")
-            .map { String($0) }
-        guard let testCaseName = testCase.first,
-              let name = testCase.last else {
-            return nil
-        }
-        return testCaseName == name
-            ? testCaseName
-            : name.prepending("\(testCaseName)_")
+            .uppercasedFirst
+        return testCase == "" || testCase == testSuite
+            ? testSuite
+            : testCase.prepending("\(testSuite)_")
     }
 }
 
 public extension TimeInterval {
     static var snapshotRenderDelay: TimeInterval = 0.4
-}
-
-private extension String {
-    func replacingFirst(of pattern: String, with replacement: String) -> String {
-        if let range = range(of: pattern) {
-            return replacingCharacters(in: range, with: replacement)
-        } else {
-            return self
-        }
-    }
-
-    func prepending(_ string: String) -> String {
-        "\(string)\(self)"
-    }
 }
