@@ -39,6 +39,7 @@ public class Snapshot {
 
     func verify(testCase: TestCase, with config: SnapshotConfig) async throws {
         let errors = try await config.configs
+            .filter(interfaceStyle)
             .tryMapAsync { config -> Error? in
                 do {
                     try await self.verify(testCase: testCase, with: config)
@@ -54,9 +55,6 @@ public class Snapshot {
     }
 
     func verify(testCase: TestCase, with config: SnapshotConfig.Config) async throws {
-        if let interfaceStyle, interfaceStyle != config.interfaceStyle {
-            return
-        }
         if recordMode {
             return try await record(testCase: testCase, with: config)
         }
@@ -273,6 +271,15 @@ private extension Snapshot.ExecutedTestCase {
         guard diff <= tolerance else {
             throw SnapshotError.referenceImageNotEqual(diff)
         }
+    }
+}
+
+private extension [SnapshotConfig.Config] {
+    func filter(_ interfaceStyle: InterfaceStyle?) -> Self {
+        guard let interfaceStyle else {
+            return self
+        }
+        return filter { $0.interfaceStyle == interfaceStyle }
     }
 }
 

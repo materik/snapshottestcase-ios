@@ -1,0 +1,36 @@
+{
+  "configurations" : [
+    {
+      "id" : "8E5C7A8A-065C-49EC-B25F-A2A780F08099",
+      "name" : "Default",
+      "options" : {
+
+      }
+    },
+    {
+      "id" : "F72BA8F3-188F-499C-8159-2BBB5154C4B1",
+      "name" : "Light",
+      "options" : {
+        "environmentVariableEntries" : [
+          {
+            "key" : "snapshotInterfaceStyle",
+            "value" : "light"
+          }
+        ]
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "SnapshotTestCaseTests",
+        "name" : "SnapshotTestCaseTests"
+      }
+    }
+  ],
+  "version" : 1
+}

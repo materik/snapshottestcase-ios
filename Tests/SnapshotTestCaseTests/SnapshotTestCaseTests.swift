@@ -10,7 +10,9 @@ class SnapshotTestCaseTests: XCTestCase, SnapshotTestCase {
     }
 
     func test2() async throws {
-        try await verifySnapshot {
+        try await verifySnapshot(
+            config: SnapshotConfig().add(device: .d6dot1, interfaceStyle: .dark)
+        ) {
             let viewController = UIHostingController(rootView: TestView())
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 let subRootView = Rectangle()

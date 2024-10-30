@@ -43,8 +43,7 @@ public extension SnapshotTestCase {
     }
 
     private func getFilePath(file: String = #file) -> URL {
-        URL(fileURLWithPath: file)
-            .deletingLastPathComponent()
+        URL(fileURLWithPath: file).deletingLastPathComponent()
     }
 
     private func getTestCaseName(file: String = #file, function: String = #function) -> String? {

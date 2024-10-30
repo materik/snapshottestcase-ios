@@ -19,6 +19,12 @@ public enum InterfaceStyle: Identifiable, Sendable {
         switch id {
         case InterfaceStyle.light.id: self = .light
         case InterfaceStyle.dark.id: self = .dark
+        case InterfaceStyle.widgetRenderingMode(.accented).id:
+            self = .widgetRenderingMode(.accented)
+        case InterfaceStyle.widgetRenderingMode(.fullColor).id:
+            self = .widgetRenderingMode(.fullColor)
+        case InterfaceStyle.widgetRenderingMode(.vibrant).id:
+            self = .widgetRenderingMode(.vibrant)
         default: return nil
         }
     }
