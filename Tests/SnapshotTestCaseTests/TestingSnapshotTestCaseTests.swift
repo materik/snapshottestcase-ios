@@ -1,14 +1,17 @@
 import SnapshotTestCase
 import SwiftUI
-import XCTest
+import Testing
 
-class SnapshotTestCaseTests: XCTestCase, SnapshotTestCase {
+@Suite
+class TestingSnapshotTestCaseTests: SnapshotTestCase {
+    @Test
     func test() async throws {
         try await verifySnapshot {
             TestView()
         }
     }
 
+    @Test
     func test2() async throws {
         try await verifySnapshot(
             config: SnapshotConfig().add(device: .d6dot1, interfaceStyle: .dark)
@@ -30,7 +33,7 @@ class SnapshotTestCaseTests: XCTestCase, SnapshotTestCase {
     }
 }
 
-struct TestView: View {
+private struct TestView: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
