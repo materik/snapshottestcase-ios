@@ -192,7 +192,7 @@ private extension Snapshot.TestCase {
         let (viewController, view) = try create(with: config, in: size)
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.rootViewController = viewController
-        window.makeKeyAndVisible()
+        window.isHidden = false
         defer { window.removeFromSuperview() }
         var snapshot = try await renderSnapshot(view: view, in: size)
         snapshot = try await crop(snapshot, to: size)
