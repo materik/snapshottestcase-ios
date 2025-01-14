@@ -166,7 +166,7 @@ private extension Snapshot {
     }
 }
 
-private class Window {
+private class SnapshotWindow {
     static var shared = Window()
     
     @Published var window: UIWindow?
@@ -233,7 +233,7 @@ private extension Snapshot.TestCase {
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
         let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
         let (viewController, view) = try create(with: config, in: size)
-        var snapshot = try await Window.shared.new()
+        var snapshot = try await SnapshotWindow.shared.new()
             .frame(CGRect(origin: .zero, size: size))
             .rootViewController(viewController)
             .render { try await renderSnapshot(view: view, in: size) }
