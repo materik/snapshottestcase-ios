@@ -193,7 +193,8 @@ private extension Snapshot.TestCase {
         let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
         let (viewController, view) = try create(with: config, in: size)
         iteration += 1
-        let window = UIWindow(frame: CGRect(origin: .init(x: iteration * 600, y: 0), size: size))
+        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        window.windowLevel = .init(CGFloat(iteration))
         window.rootViewController = viewController
         window.isHidden = false
         defer { window.removeFromSuperview() }
