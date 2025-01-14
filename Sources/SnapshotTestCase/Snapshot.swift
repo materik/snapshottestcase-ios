@@ -167,7 +167,7 @@ private extension Snapshot {
 }
 
 private class SnapshotWindow {
-    static var shared = Window()
+    static var shared = SnapshotWindow()
     
     @Published var window: UIWindow?
     
