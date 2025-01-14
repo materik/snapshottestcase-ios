@@ -1,6 +1,8 @@
 import Combine
 import UIKit
 
+private var iteration: Int = 0
+
 public class Snapshot {
     static var renderOffsetY: CGFloat = LaunchEnvironment.renderOffsetY
     static var renderScale: CGFloat = LaunchEnvironment.renderScale
@@ -190,7 +192,8 @@ private extension Snapshot.TestCase {
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
         let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
         let (viewController, view) = try create(with: config, in: size)
-        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        iteration += 1
+        let window = UIWindow(frame: CGRect(origin: .init(x: iteration * 600, y: 0), size: size))
         window.rootViewController = viewController
         window.isHidden = false
         defer { window.removeFromSuperview() }
