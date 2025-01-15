@@ -188,8 +188,7 @@ private class SnapshotWindow {
             }
         }
         print("waited")
-        self.window = UIWindow()
-        return self
+        return try await new()
     }
     
     func frame(_ frame: CGRect) -> Self {
