@@ -174,16 +174,20 @@ private class SnapshotWindow {
     @MainActor
     func new() async throws -> Self {
         if window == nil {
+            print("new")
             self.window = UIWindow()
             return self
         }
+        print("waitForWindow")
         for await window in $window.values {
             if window == nil {
                 break
             } else {
+                print("waited")
                 try await Task.sleep(for: .milliseconds(10))
             }
         }
+        print("waited")
         self.window = UIWindow()
         return self
     }
