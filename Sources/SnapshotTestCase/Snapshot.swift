@@ -166,6 +166,48 @@ private extension Snapshot {
     }
 }
 
+private class SnapshotWindow {
+    static var shared = SnapshotWindow()
+
+    @Published var window: UIWindow?
+
+    @MainActor
+    func new() async throws -> Self {
+        if window == nil {
+            window = UIWindow()
+            return self
+        }
+        for await window in $window.values {
+            if window == nil {
+                break
+            } else {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+        }
+        return try await new()
+    }
+
+    func frame(_ frame: CGRect) -> Self {
+        window?.frame = frame
+        return self
+    }
+
+    func rootViewController(_ viewController: UIViewController) -> Self {
+        window?.rootViewController = viewController
+        return self
+    }
+
+    @MainActor
+    func render(_ render: () async throws -> UIImage) async throws -> UIImage {
+        window?.isHidden = false
+        let snapshot = try await render()
+        window?.isHidden = true
+        window?.removeFromSuperview()
+        window = nil
+        return snapshot
+    }
+}
+
 private extension Snapshot.TestCase {
     private func frame(size: CGSize) -> CGRect {
         CGRect(
@@ -190,11 +232,10 @@ private extension Snapshot.TestCase {
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
         let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
         let (viewController, view) = try create(with: config, in: size)
-        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
-        window.rootViewController = viewController
-        window.makeKeyAndVisible()
-        defer { window.removeFromSuperview() }
-        var snapshot = try await renderSnapshot(view: view, in: size)
+        var snapshot = try await SnapshotWindow.shared.new()
+            .frame(CGRect(origin: .zero, size: size))
+            .rootViewController(viewController)
+            .render { try await renderSnapshot(view: view, in: size) }
         snapshot = try await crop(snapshot, to: size)
         snapshot = try await resize(snapshot, to: Snapshot.renderScale)
         return snapshot
@@ -208,9 +249,7 @@ private extension Snapshot.TestCase {
         }
 
         try await Task.sleep(for: .seconds(renderDelay))
-        await MainActor.run {
-            view.layer.render(in: context)
-        }
+        view.layer.render(in: context)
 
         let image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
