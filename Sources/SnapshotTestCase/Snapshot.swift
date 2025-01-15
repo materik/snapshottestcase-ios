@@ -168,46 +168,42 @@ private extension Snapshot {
 
 private class SnapshotWindow {
     static var shared = SnapshotWindow()
-    
+
     @Published var window: UIWindow?
-    
+
     @MainActor
     func new() async throws -> Self {
         if window == nil {
-            print("new")
-            self.window = UIWindow()
+            window = UIWindow()
             return self
         }
-        print("waitForWindow")
         for await window in $window.values {
             if window == nil {
                 break
             } else {
-                print("waited")
                 try await Task.sleep(for: .milliseconds(10))
             }
         }
-        print("waited")
         return try await new()
     }
-    
+
     func frame(_ frame: CGRect) -> Self {
         window?.frame = frame
         return self
     }
-    
+
     func rootViewController(_ viewController: UIViewController) -> Self {
         window?.rootViewController = viewController
         return self
     }
-    
+
     @MainActor
     func render(_ render: () async throws -> UIImage) async throws -> UIImage {
         window?.isHidden = false
         let snapshot = try await render()
         window?.isHidden = true
         window?.removeFromSuperview()
-        self.window = nil
+        window = nil
         return snapshot
     }
 }
