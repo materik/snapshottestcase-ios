@@ -13,6 +13,7 @@ public class Snapshot {
         let filePath: URL
         let name: String
         let renderDelay: TimeInterval
+        let viewSetup: @MainActor () async throws -> Void
         let viewControllerBuilder: @MainActor () -> UIViewController
     }
 
@@ -249,6 +250,7 @@ private extension Snapshot.TestCase {
         }
 
         try await Task.sleep(for: .seconds(renderDelay))
+        try await viewSetup()
         view.layer.render(in: context)
 
         let image = UIGraphicsGetImageFromCurrentImageContext()
