@@ -237,13 +237,12 @@ private extension Snapshot.TestCase {
             .rootViewController(viewController)
             .render { try await renderSnapshot(view: view, in: size) }
         snapshot = try await crop(snapshot, to: size)
-        snapshot = try await resize(snapshot, to: Snapshot.renderScale)
         return snapshot
     }
 
     @MainActor
     private func renderSnapshot(view: UIView, in size: CGSize) async throws -> UIImage {
-        UIGraphicsBeginImageContextWithOptions(size, true, 1)
+        UIGraphicsBeginImageContextWithOptions(size, true, Snapshot.renderScale)
         guard let context = UIGraphicsGetCurrentContext() else {
             throw SnapshotError.invalidContext
         }
@@ -262,18 +261,17 @@ private extension Snapshot.TestCase {
 
     @MainActor
     private func crop(_ image: UIImage, to size: CGSize) async throws -> UIImage {
-        guard let cgImage = image.cgImage?.cropping(to: frame(size: size)) else {
+        let scale = image.scale
+        let pixelFrame = CGRect(
+            x: 0,
+            y: (Snapshot.renderOffsetY * scale).rounded(),
+            width: (size.width * scale).rounded(),
+            height: (size.height * scale).rounded()
+        )
+        guard let cgImage = image.cgImage?.cropping(to: pixelFrame) else {
             throw SnapshotError.cropSnapshot
         }
-        return UIImage(cgImage: cgImage)
-    }
-
-    @MainActor
-    private func resize(_ image: UIImage, to scale: CGFloat) async throws -> UIImage {
-        guard let image = image.resized(toScale: scale) else {
-            throw SnapshotError.resizeSnapshot
-        }
-        return image
+        return UIImage(cgImage: cgImage, scale: scale, orientation: image.imageOrientation)
     }
 
     @MainActor
