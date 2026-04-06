@@ -4,6 +4,7 @@ import UIKit
 public class Snapshot {
     static var renderOffsetY: CGFloat = LaunchEnvironment.renderOffsetY
     static var renderScale: CGFloat = LaunchEnvironment.renderScale
+    static var renderStrategy: SnapshotRenderStrategy = LaunchEnvironment.renderStrategy
 
     enum Constants {
         static let imageExt: String = "png"
@@ -242,7 +243,8 @@ private extension Snapshot.TestCase {
 
     @MainActor
     private func renderSnapshot(view: UIView, in size: CGSize) async throws -> UIImage {
-        UIGraphicsBeginImageContextWithOptions(size, true, Snapshot.renderScale)
+        let scale: CGFloat = Snapshot.renderStrategy == .renderThenResize ? 1 : Snapshot.renderScale
+        UIGraphicsBeginImageContextWithOptions(size, true, scale)
         guard let context = UIGraphicsGetCurrentContext() else {
             throw SnapshotError.invalidContext
         }
@@ -261,17 +263,28 @@ private extension Snapshot.TestCase {
 
     @MainActor
     private func crop(_ image: UIImage, to size: CGSize) async throws -> UIImage {
-        let scale = image.scale
-        let pixelFrame = CGRect(
-            x: 0,
-            y: (Snapshot.renderOffsetY * scale).rounded(),
-            width: (size.width * scale).rounded(),
-            height: (size.height * scale).rounded()
-        )
-        guard let cgImage = image.cgImage?.cropping(to: pixelFrame) else {
-            throw SnapshotError.cropSnapshot
+        switch Snapshot.renderStrategy {
+        case .renderAtScale:
+            let scale = image.scale
+            let pixelFrame = CGRect(
+                x: 0,
+                y: (Snapshot.renderOffsetY * scale).rounded(),
+                width: (size.width * scale).rounded(),
+                height: (size.height * scale).rounded()
+            )
+            guard let cgImage = image.cgImage?.cropping(to: pixelFrame) else {
+                throw SnapshotError.cropSnapshot
+            }
+            return UIImage(cgImage: cgImage, scale: scale, orientation: image.imageOrientation)
+        case .renderThenResize:
+            guard let cgImage = image.cgImage?.cropping(to: frame(size: size)) else {
+                throw SnapshotError.cropSnapshot
+            }
+            guard let resized = UIImage(cgImage: cgImage).resized(toScale: Snapshot.renderScale) else {
+                throw SnapshotError.resizeSnapshot
+            }
+            return resized
         }
-        return UIImage(cgImage: cgImage, scale: scale, orientation: image.imageOrientation)
     }
 
     @MainActor

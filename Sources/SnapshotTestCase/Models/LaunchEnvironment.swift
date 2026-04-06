@@ -7,6 +7,7 @@ enum LaunchEnvironment {
         static let tolerance: String = "snapshotTolerance"
         static let renderOffsetY: String = "snapshotRenderOffsetY"
         static let renderScale: String = "snapshotRenderScale"
+        static let renderStrategy: String = "snapshotRenderStrategy"
         static let interfaceStyle: String = "snapshotInterfaceStyle"
         static let recordMode: String = "-RecordingSnapshot"
     }
@@ -42,6 +43,10 @@ enum LaunchEnvironment {
             return 1
         }
         return Double(renderScale) ?? 1
+    }
+
+    static var renderStrategy: SnapshotRenderStrategy {
+        SnapshotRenderStrategy(rawValue: ProcessInfo.processInfo.environment[Key.renderStrategy] ?? "") ?? .renderAtScale
     }
 
     static var interfaceStyle: InterfaceStyle? {
