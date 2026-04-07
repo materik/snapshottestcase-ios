@@ -2,9 +2,10 @@ import UIKit
 
 extension UIImage {
     func compare(with reference: UIImage, tolerance: Int = 1000) -> Double? {
-        guard size.equalTo(reference.size),
-              let cgImage,
-              let referenceCGImage = reference.cgImage else {
+        guard let cgImage,
+              let referenceCGImage = reference.cgImage,
+              cgImage.width == referenceCGImage.width,
+              cgImage.height == referenceCGImage.height else {
             return nil
         }
 
@@ -47,10 +48,10 @@ extension UIImage {
             return nil
         }
 
-        imageContext.draw(cgImage, in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        imageContext.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
         referenceContext.draw(
             referenceCGImage,
-            in: CGRect(x: 0, y: 0, width: reference.size.width, height: reference.size.height)
+            in: CGRect(x: 0, y: 0, width: referenceCGImage.width, height: referenceCGImage.height)
         )
 
         // Go through each pixel in turn and see if it is different
