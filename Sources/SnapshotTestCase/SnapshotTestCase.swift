@@ -13,6 +13,8 @@ public extension SnapshotTestCase {
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
         function: String = #function,
+        preAppear: @MainActor @escaping () async throws -> Void = { },
+        postAppear: @MainActor @escaping () async throws -> Void = { },
         viewBuilder: @escaping @MainActor () -> some View
     ) async throws {
         try await verifySnapshot(
@@ -21,6 +23,8 @@ public extension SnapshotTestCase {
             renderDelay: renderDelay,
             file: file,
             function: function,
+            preAppear: preAppear,
+            postAppear: postAppear,
             viewControllerBuilder: { UIHostingController(rootView: viewBuilder()) }
         )
     }
@@ -31,12 +35,16 @@ public extension SnapshotTestCase {
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
         function: String = #function,
+        preAppear: @MainActor @escaping () async throws -> Void = { },
+        postAppear: @MainActor @escaping () async throws -> Void = { },
         viewControllerBuilder: @escaping @MainActor () -> some UIViewController
     ) async throws {
         let testCase = Snapshot.TestCase(
             filePath: getFilePath(file: file),
             name: name ?? getTestCaseName(file: file, function: function) ?? "Test",
             renderDelay: renderDelay,
+            preAppear: preAppear,
+            postAppear: postAppear,
             viewControllerBuilder: viewControllerBuilder
         )
         try await snapshot.verify(testCase: testCase, with: config)

@@ -14,6 +14,8 @@ public class Snapshot {
         let filePath: URL
         let name: String
         let renderDelay: TimeInterval
+        let preAppear: @MainActor () async throws -> Void
+        let postAppear: @MainActor () async throws -> Void
         let viewControllerBuilder: @MainActor () -> UIViewController
     }
 
@@ -232,7 +234,7 @@ private extension Snapshot.TestCase {
     @MainActor
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
         let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
-        let (viewController, view) = try create(with: config, in: size)
+        let (viewController, view) = try await  create(with: config, in: size)
         var snapshot = try await SnapshotWindow.shared.new()
             .frame(CGRect(origin: .zero, size: size))
             .rootViewController(viewController)
@@ -250,6 +252,7 @@ private extension Snapshot.TestCase {
         }
 
         try await Task.sleep(for: .seconds(renderDelay))
+        try await postAppear()
         view.layer.render(in: context)
 
         let image = UIGraphicsGetImageFromCurrentImageContext()
@@ -291,7 +294,8 @@ private extension Snapshot.TestCase {
     private func create(
         with config: SnapshotConfig.Config,
         in size: CGSize
-    ) throws -> (UIViewController, UIView) {
+    ) async throws -> (UIViewController, UIView) {
+        try await preAppear()
         let viewController = viewControllerBuilder().interfaceStyle(config.interfaceStyle)
         viewController.beginAppearanceTransition(true, animated: false)
         viewController.endAppearanceTransition()
