@@ -13,7 +13,7 @@ public class Snapshot {
     struct TestCase {
         let filePath: URL
         let name: String
-        let renderDelay: TimeInterval
+        let onAppear: @MainActor () async throws -> Void
         let viewControllerBuilder: @MainActor () -> UIViewController
     }
 
@@ -249,7 +249,8 @@ private extension Snapshot.TestCase {
             throw SnapshotError.invalidContext
         }
 
-        try await Task.sleep(for: .seconds(renderDelay))
+        try await onAppear()
+        try await Task.sleep(for: .milliseconds(100))
         view.layer.render(in: context)
 
         let image = UIGraphicsGetImageFromCurrentImageContext()

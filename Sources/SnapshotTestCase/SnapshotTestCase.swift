@@ -10,6 +10,41 @@ public extension SnapshotTestCase {
     func verifySnapshot(
         name: String? = nil,
         config: SnapshotConfig = .default,
+        onAppear: @escaping @MainActor () async throws -> Void,
+        file: String = #file,
+        function: String = #function,
+        viewBuilder: @escaping @MainActor () -> some View
+    ) async throws {
+        try await verifySnapshot(
+            name: name,
+            config: config,
+            onAppear: onAppear,
+            file: file,
+            function: function,
+            viewControllerBuilder: { UIHostingController(rootView: viewBuilder()) }
+        )
+    }
+
+    func verifySnapshot(
+        name: String? = nil,
+        config: SnapshotConfig = .default,
+        onAppear: @escaping @MainActor () async throws -> Void,
+        file: String = #file,
+        function: String = #function,
+        viewControllerBuilder: @escaping @MainActor () -> some UIViewController
+    ) async throws {
+        let testCase = Snapshot.TestCase(
+            filePath: getFilePath(file: file),
+            name: name ?? getTestCaseName(file: file, function: function) ?? "Test",
+            onAppear: onAppear,
+            viewControllerBuilder: viewControllerBuilder
+        )
+        try await snapshot.verify(testCase: testCase, with: config)
+    }
+
+    func verifySnapshot(
+        name: String? = nil,
+        config: SnapshotConfig = .default,
         renderDelay: TimeInterval = .snapshotRenderDelay,
         file: String = #file,
         function: String = #function,
@@ -36,7 +71,7 @@ public extension SnapshotTestCase {
         let testCase = Snapshot.TestCase(
             filePath: getFilePath(file: file),
             name: name ?? getTestCaseName(file: file, function: function) ?? "Test",
-            renderDelay: renderDelay,
+            onAppear: { try await Task.sleep(for: .seconds(renderDelay)) },
             viewControllerBuilder: viewControllerBuilder
         )
         try await snapshot.verify(testCase: testCase, with: config)
