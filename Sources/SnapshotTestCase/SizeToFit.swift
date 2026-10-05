@@ -3,90 +3,104 @@ import UIKit
 final class SizeToFit {
     let probeHeight: CGFloat = 10000
 
-    private let backgroundTolerance: Int = 3
-
     func crop(_ image: UIImage, topInsetPoints: CGFloat) -> UIImage {
-        var result = trimTrailingBackground(image)
-        result = cropTop(result, byPoints: topInsetPoints)
-        return result
+        image
+            .trimmingTrailingBackground()
+            .cropping(dropTopPoints: topInsetPoints)
+    }
+}
+
+private extension UIImage {
+    func trimmingTrailingBackground() -> UIImage {
+        guard let buffer = PixelBuffer(image: self),
+              let lastContentRow = buffer.lastContentRow(),
+              lastContentRow < buffer.height - 1 else {
+            return self
+        }
+        let bottomPaddingPixels = Int(Snapshot.renderPaddingBottom * scale)
+        let height = min(buffer.height, lastContentRow + 1 + bottomPaddingPixels)
+        return cropping(to: CGRect(x: 0, y: 0, width: buffer.width, height: height)) ?? self
     }
 
-    private func trimTrailingBackground(_ image: UIImage) -> UIImage {
+    func cropping(dropTopPoints points: CGFloat) -> UIImage {
+        guard points > 0, let cgImage else { return self }
+        let pixels = Int((points * scale).rounded())
+        guard pixels > 0, pixels < cgImage.height else { return self }
+        let rect = CGRect(x: 0, y: pixels, width: cgImage.width, height: cgImage.height - pixels)
+        return cropping(to: rect) ?? self
+    }
+
+    func cropping(to rect: CGRect) -> UIImage? {
+        guard let cropped = cgImage?.cropping(to: rect) else { return nil }
+        return UIImage(cgImage: cropped, scale: scale, orientation: imageOrientation)
+    }
+}
+
+private struct PixelBuffer {
+    static let backgroundTolerance: Int = 3
+
+    let data: CFData
+    let bytes: UnsafePointer<UInt8>
+    let width: Int
+    let height: Int
+    let bytesPerRow: Int
+    let bytesPerPixel: Int
+
+    init?(image: UIImage) {
         guard let cgImage = image.cgImage,
               let data = cgImage.dataProvider?.data,
               let bytes = CFDataGetBytePtr(data) else {
-            return image
+            return nil
         }
-        let width = cgImage.width
-        let height = cgImage.height
-        let bytesPerRow = cgImage.bytesPerRow
         let bytesPerPixel = cgImage.bitsPerPixel / 8
-        guard bytesPerPixel >= 3, width > 0, height > 0 else { return image }
+        guard bytesPerPixel >= 3, cgImage.width > 0, cgImage.height > 0 else {
+            return nil
+        }
+        self.data = data
+        self.bytes = bytes
+        self.width = cgImage.width
+        self.height = cgImage.height
+        self.bytesPerRow = cgImage.bytesPerRow
+        self.bytesPerPixel = bytesPerPixel
+    }
 
-        let bgSamples = backgroundSamples(bytes: bytes, bytesPerRow: bytesPerRow, bytesPerPixel: bytesPerPixel, width: width, height: height)
+    func lastContentRow() -> Int? {
+        let backgrounds = backgroundSamples()
         let scanStride = max(1, width / 64)
-        var lastContentRow = -1
-        for y in stride(from: height - 1, through: 0, by: -1) {
-            var rowHasContent = false
-            for x in stride(from: 0, to: width, by: scanStride) {
-                let p = pixel(bytes: bytes, bytesPerRow: bytesPerRow, bytesPerPixel: bytesPerPixel, x: x, y: y)
-                if !bgSamples.contains(where: { matches(p, $0) }) {
-                    rowHasContent = true
-                    break
-                }
-            }
-            if rowHasContent {
-                lastContentRow = y
-                break
-            }
+        for y in stride(from: height - 1, through: 0, by: -1)
+        where rowHasContent(y: y, stride: scanStride, backgrounds: backgrounds) {
+            return y
         }
-        guard lastContentRow >= 0, lastContentRow < height - 1 else { return image }
-        let padding = Int(Snapshot.renderPaddingBottom * image.scale)
-        let cropHeight = min(height, lastContentRow + 1 + padding)
-        guard let cropped = cgImage.cropping(to: CGRect(x: 0, y: 0, width: width, height: cropHeight)) else {
-            return image
-        }
-        return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)
+        return nil
     }
 
-    private func cropTop(_ image: UIImage, byPoints points: CGFloat) -> UIImage {
-        guard points > 0, let cgImage = image.cgImage else { return image }
-        let pixels = Int((points * image.scale).rounded())
-        guard pixels > 0, pixels < cgImage.height else { return image }
-        let rect = CGRect(x: 0, y: pixels, width: cgImage.width, height: cgImage.height - pixels)
-        guard let cropped = cgImage.cropping(to: rect) else { return image }
-        return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)
-    }
-
-    private func backgroundSamples(
-        bytes: UnsafePointer<UInt8>,
-        bytesPerRow: Int,
-        bytesPerPixel: Int,
-        width: Int,
-        height: Int
-    ) -> [(UInt8, UInt8, UInt8)] {
-        let y = height - 1
-        return [
-            pixel(bytes: bytes, bytesPerRow: bytesPerRow, bytesPerPixel: bytesPerPixel, x: 0, y: y),
-            pixel(bytes: bytes, bytesPerRow: bytesPerRow, bytesPerPixel: bytesPerPixel, x: width / 2, y: y),
-            pixel(bytes: bytes, bytesPerRow: bytesPerRow, bytesPerPixel: bytesPerPixel, x: width - 1, y: y),
-        ]
-    }
-
-    private func pixel(
-        bytes: UnsafePointer<UInt8>,
-        bytesPerRow: Int,
-        bytesPerPixel: Int,
-        x: Int,
-        y: Int
-    ) -> (UInt8, UInt8, UInt8) {
+    private func color(x: Int, y: Int) -> Color {
         let offset = y * bytesPerRow + x * bytesPerPixel
-        return (bytes[offset], bytes[offset + 1], bytes[offset + 2])
+        return Color(r: bytes[offset], g: bytes[offset + 1], b: bytes[offset + 2])
     }
 
-    private func matches(_ a: (UInt8, UInt8, UInt8), _ b: (UInt8, UInt8, UInt8)) -> Bool {
-        abs(Int(a.0) - Int(b.0)) < backgroundTolerance
-            && abs(Int(a.1) - Int(b.1)) < backgroundTolerance
-            && abs(Int(a.2) - Int(b.2)) < backgroundTolerance
+    private func backgroundSamples() -> [Color] {
+        let y = height - 1
+        return [color(x: 0, y: y), color(x: width / 2, y: y), color(x: width - 1, y: y)]
+    }
+
+    private func rowHasContent(y: Int, stride: Int, backgrounds: [Color]) -> Bool {
+        for x in Swift.stride(from: 0, to: width, by: stride)
+        where !backgrounds.contains(where: { $0.matches(color(x: x, y: y)) }) {
+            return true
+        }
+        return false
+    }
+}
+
+private struct Color {
+    let r: UInt8
+    let g: UInt8
+    let b: UInt8
+
+    func matches(_ other: Color) -> Bool {
+        abs(Int(r) - Int(other.r)) < PixelBuffer.backgroundTolerance
+            && abs(Int(g) - Int(other.g)) < PixelBuffer.backgroundTolerance
+            && abs(Int(b) - Int(other.b)) < PixelBuffer.backgroundTolerance
     }
 }

@@ -234,29 +234,31 @@ private extension Snapshot.TestCase {
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
         let proposedSize = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
         let (viewController, view) = try create(with: config, in: proposedSize)
-        var size = proposedSize
         let sizeToFit = SizeToFit()
-        var snapshot = try await SnapshotWindow.shared.new()
+        let renderSize = config.sizeToFit
+            ? CGSize(width: proposedSize.width, height: sizeToFit.probeHeight)
+            : proposedSize
+        let snapshot = try await SnapshotWindow.shared.new()
             .frame(CGRect(origin: .zero, size: proposedSize))
             .rootViewController(viewController)
-            .render {
-                try await onAppear()
-                try await Task.sleep(for: .milliseconds(100))
-                if config.fitsHeight {
-                    size = CGSize(width: proposedSize.width, height: sizeToFit.probeHeight)
-                    view.frame = CGRect(origin: .zero, size: size)
-                    view.setNeedsLayout()
-                    view.layoutIfNeeded()
-                    try await Task.sleep(for: .milliseconds(100))
-                }
-                return try await renderSnapshot(view: view, in: size)
-            }
-        if config.fitsHeight {
-            snapshot = sizeToFit.crop(snapshot, topInsetPoints: Snapshot.renderOffsetY)
-        } else {
-            snapshot = try await crop(snapshot, to: size)
+            .render { try await renderView(view: view, in: renderSize, sizeToFit: config.sizeToFit) }
+        if config.sizeToFit {
+            return sizeToFit.crop(snapshot, topInsetPoints: Snapshot.renderOffsetY)
         }
-        return snapshot
+        return try await crop(snapshot, to: renderSize)
+    }
+
+    @MainActor
+    private func renderView(view: UIView, in size: CGSize, sizeToFit: Bool) async throws -> UIImage {
+        try await onAppear()
+        try await Task.sleep(for: .milliseconds(100))
+        if sizeToFit {
+            view.frame = CGRect(origin: .zero, size: size)
+            view.setNeedsLayout()
+            view.layoutIfNeeded()
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        return try await renderSnapshot(view: view, in: size)
     }
 
     @MainActor

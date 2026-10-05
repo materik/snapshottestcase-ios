@@ -4,18 +4,18 @@ public struct SnapshotConfig: Sendable {
     struct Config: Identifiable, Sendable {
         let device: Device
         let interfaceStyle: InterfaceStyle
-        let fitsHeight: Bool
+        let sizeToFit: Bool
 
-        init(device: Device, interfaceStyle: InterfaceStyle, fitsHeight: Bool = false) {
+        init(device: Device, interfaceStyle: InterfaceStyle, sizeToFit: Bool = false) {
             self.device = device
             self.interfaceStyle = interfaceStyle
-            self.fitsHeight = fitsHeight
+            self.sizeToFit = sizeToFit
         }
 
         var id: String {
             var parts = [device.id, interfaceStyle.id]
-            if fitsHeight {
-                parts.append("fit")
+            if sizeToFit {
+                parts.append("sizedToFit")
             }
             return parts.joined(separator: "_")
         }
@@ -52,12 +52,12 @@ public extension SnapshotConfig {
     static var `default` = SnapshotConfig().add(device: .default)
 
     static var sizeToFit: SnapshotConfig {
-        SnapshotConfig.default.fittingHeight()
+        SnapshotConfig.default.sizeToFit()
     }
 
-    func fittingHeight() -> SnapshotConfig {
+    func sizeToFit() -> SnapshotConfig {
         SnapshotConfig(configs.map {
-            Config(device: $0.device, interfaceStyle: $0.interfaceStyle, fitsHeight: true)
+            Config(device: $0.device, interfaceStyle: $0.interfaceStyle, sizeToFit: true)
         })
     }
 }
