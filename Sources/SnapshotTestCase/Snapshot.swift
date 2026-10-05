@@ -232,14 +232,14 @@ private extension Snapshot.TestCase {
 
     @MainActor
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
-        let proposedSize = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
-        let (viewController, view) = try create(with: config, in: proposedSize)
+        let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
+        let (viewController, view) = try create(with: config, in: size)
         let sizeToFit = SizeToFit()
         let renderSize = config.sizeToFit
-            ? CGSize(width: proposedSize.width, height: sizeToFit.probeHeight)
-            : proposedSize
+            ? CGSize(width: size.width, height: sizeToFit.probeHeight)
+            : size
         let snapshot = try await SnapshotWindow.shared.new()
-            .frame(CGRect(origin: .zero, size: proposedSize))
+            .frame(CGRect(origin: .zero, size: size))
             .rootViewController(viewController)
             .render { try await renderView(view: view, in: renderSize, sizeToFit: config.sizeToFit) }
         if config.sizeToFit {
