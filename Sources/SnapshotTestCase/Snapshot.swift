@@ -272,15 +272,17 @@ private extension Snapshot.TestCase {
     @MainActor
     private func fittingHeight(for viewController: UIViewController, width: CGFloat) -> CGFloat? {
         let probe = CGSize(width: width, height: 10000)
+        viewController.view.setNeedsLayout()
         viewController.view.layoutIfNeeded()
-        if let scrollHeight = scrollContentHeight(in: viewController.view) {
-            return scrollHeight
-        }
+
         if let hostingView = hostingView(in: viewController) {
             let fitted = hostingView.sizeThatFits(probe)
             if fitted.height > 0, fitted.height < probe.height {
                 return fitted.height
             }
+        }
+        if let scrollHeight = scrollContentHeight(in: viewController.view) {
+            return scrollHeight
         }
         let fitted = viewController.view.sizeThatFits(probe)
         if fitted.height > 0, fitted.height < probe.height {
@@ -291,14 +293,8 @@ private extension Snapshot.TestCase {
 
     @MainActor
     private func scrollContentHeight(in view: UIView) -> CGFloat? {
-        if let scrollView = view as? UIScrollView {
-            scrollView.layoutIfNeeded()
-            let height = scrollView.contentSize.height
-                + scrollView.adjustedContentInset.top
-                + scrollView.adjustedContentInset.bottom
-            if height > 0 {
-                return height
-            }
+        if let scrollView = view as? UIScrollView, scrollView.contentSize.height > 0 {
+            return scrollView.contentSize.height
         }
         for subview in view.subviews {
             if let height = scrollContentHeight(in: subview) {
