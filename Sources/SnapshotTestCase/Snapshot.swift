@@ -5,6 +5,7 @@ public class Snapshot {
     static var renderOffsetY: CGFloat = LaunchEnvironment.renderOffsetY
     static var renderScale: CGFloat = LaunchEnvironment.renderScale
     static var renderStrategy: SnapshotRenderStrategy = LaunchEnvironment.renderStrategy
+    static var renderPaddingBottom: CGFloat = LaunchEnvironment.renderPaddingBottom
 
     enum Constants {
         static let imageExt: String = "png"
@@ -234,22 +235,27 @@ private extension Snapshot.TestCase {
         let proposedSize = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
         let (viewController, view) = try create(with: config, in: proposedSize)
         var size = proposedSize
+        let sizeToFit = SizeToFit()
         var snapshot = try await SnapshotWindow.shared.new()
             .frame(CGRect(origin: .zero, size: proposedSize))
             .rootViewController(viewController)
             .render {
                 try await onAppear()
                 try await Task.sleep(for: .milliseconds(100))
-                if config.fitsHeight,
-                   let fittedHeight = fittingHeight(for: viewController, width: proposedSize.width) {
-                    size = CGSize(width: proposedSize.width, height: fittedHeight + Snapshot.renderOffsetY)
-                    view.frame = frame(size: size)
+                if config.fitsHeight {
+                    size = CGSize(width: proposedSize.width, height: sizeToFit.probeHeight)
+                    view.frame = CGRect(origin: .zero, size: size)
                     view.setNeedsLayout()
                     view.layoutIfNeeded()
+                    try await Task.sleep(for: .milliseconds(100))
                 }
                 return try await renderSnapshot(view: view, in: size)
             }
-        snapshot = try await crop(snapshot, to: size)
+        if config.fitsHeight {
+            snapshot = sizeToFit.crop(snapshot, topInsetPoints: Snapshot.renderOffsetY)
+        } else {
+            snapshot = try await crop(snapshot, to: size)
+        }
         return snapshot
     }
 
@@ -267,54 +273,6 @@ private extension Snapshot.TestCase {
             throw SnapshotError.takeSnapshot
         }
         return image
-    }
-
-    @MainActor
-    private func fittingHeight(for viewController: UIViewController, width: CGFloat) -> CGFloat? {
-        let probe = CGSize(width: width, height: 10000)
-        viewController.view.setNeedsLayout()
-        viewController.view.layoutIfNeeded()
-
-        if let hostingView = hostingView(in: viewController) {
-            let fitted = hostingView.sizeThatFits(probe)
-            if fitted.height > 0, fitted.height < probe.height {
-                return fitted.height
-            }
-        }
-        if let scrollHeight = scrollContentHeight(in: viewController.view) {
-            return scrollHeight
-        }
-        let fitted = viewController.view.sizeThatFits(probe)
-        if fitted.height > 0, fitted.height < probe.height {
-            return fitted.height
-        }
-        return nil
-    }
-
-    @MainActor
-    private func scrollContentHeight(in view: UIView) -> CGFloat? {
-        if let scrollView = view as? UIScrollView, scrollView.contentSize.height > 0 {
-            return scrollView.contentSize.height
-        }
-        for subview in view.subviews {
-            if let height = scrollContentHeight(in: subview) {
-                return height
-            }
-        }
-        return nil
-    }
-
-    @MainActor
-    private func hostingView(in viewController: UIViewController) -> UIView? {
-        if String(describing: type(of: viewController)).hasPrefix("UIHostingController") {
-            return viewController.view
-        }
-        for child in viewController.children {
-            if let found = hostingView(in: child) {
-                return found
-            }
-        }
-        return nil
     }
 
     @MainActor
