@@ -5,6 +5,7 @@ public class Snapshot {
     static var renderOffsetY: CGFloat = LaunchEnvironment.renderOffsetY
     static var renderScale: CGFloat = LaunchEnvironment.renderScale
     static var renderStrategy: SnapshotRenderStrategy = LaunchEnvironment.renderStrategy
+    static var renderPaddingBottom: CGFloat = LaunchEnvironment.renderPaddingBottom
 
     enum Constants {
         static let imageExt: String = "png"
@@ -233,12 +234,31 @@ private extension Snapshot.TestCase {
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
         let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
         let (viewController, view) = try create(with: config, in: size)
-        var snapshot = try await SnapshotWindow.shared.new()
+        let sizeToFit = SizeToFit()
+        let renderSize = config.sizeToFit
+            ? CGSize(width: size.width, height: sizeToFit.probeHeight)
+            : size
+        let snapshot = try await SnapshotWindow.shared.new()
             .frame(CGRect(origin: .zero, size: size))
             .rootViewController(viewController)
-            .render { try await renderSnapshot(view: view, in: size) }
-        snapshot = try await crop(snapshot, to: size)
-        return snapshot
+            .render { try await renderView(view: view, in: renderSize, sizeToFit: config.sizeToFit) }
+        if config.sizeToFit {
+            return sizeToFit.crop(snapshot, topInsetPoints: Snapshot.renderOffsetY)
+        }
+        return try await crop(snapshot, to: renderSize)
+    }
+
+    @MainActor
+    private func renderView(view: UIView, in size: CGSize, sizeToFit: Bool) async throws -> UIImage {
+        try await onAppear()
+        try await Task.sleep(for: .milliseconds(100))
+        if sizeToFit {
+            view.frame = CGRect(origin: .zero, size: size)
+            view.setNeedsLayout()
+            view.layoutIfNeeded()
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        return try await renderSnapshot(view: view, in: size)
     }
 
     @MainActor
@@ -248,14 +268,9 @@ private extension Snapshot.TestCase {
         guard let context = UIGraphicsGetCurrentContext() else {
             throw SnapshotError.invalidContext
         }
-
-        try await onAppear()
-        try await Task.sleep(for: .milliseconds(100))
         view.layer.render(in: context)
-
         let image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
-
         guard let image else {
             throw SnapshotError.takeSnapshot
         }

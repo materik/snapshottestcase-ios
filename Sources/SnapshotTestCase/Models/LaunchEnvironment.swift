@@ -8,6 +8,7 @@ enum LaunchEnvironment {
         static let renderOffsetY: String = "snapshotRenderOffsetY"
         static let renderScale: String = "snapshotRenderScale"
         static let renderStrategy: String = "snapshotRenderStrategy"
+        static let renderPaddingBottom: String = "snapshotRenderPaddingBottom"
         static let interfaceStyle: String = "snapshotInterfaceStyle"
         static let recordMode: String = "-RecordingSnapshot"
     }
@@ -47,6 +48,13 @@ enum LaunchEnvironment {
 
     static var renderStrategy: SnapshotRenderStrategy {
         SnapshotRenderStrategy(rawValue: ProcessInfo.processInfo.environment[Key.renderStrategy] ?? "") ?? .renderAtScale
+    }
+
+    static var renderPaddingBottom: CGFloat {
+        guard let value = ProcessInfo.processInfo.environment[Key.renderPaddingBottom] else {
+            return 16
+        }
+        return Double(value) ?? 16
     }
 
     static var interfaceStyle: InterfaceStyle? {
