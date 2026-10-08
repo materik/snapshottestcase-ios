@@ -8,6 +8,20 @@ final class SizeToFit {
             .trimmingTrailingBackground()
             .cropping(dropTopPoints: topInsetPoints)
     }
+
+    /// Returns the natural rendered height of the view's primary content, if it
+    /// can be inferred from a dominant `UIScrollView` in the hierarchy. Overlay
+    /// chrome (floating action buttons, toolbars) that sits outside the scroll
+    /// view is ignored, so sizing isn't thrown off by content pinned to the
+    /// bottom of the probe frame.
+    @MainActor
+    func contentHeight(for view: UIView, probeWidth: CGFloat) -> CGFloat? {
+        guard let scrollView = view.dominantScrollView(probeWidth: probeWidth) else {
+            return nil
+        }
+        let scrollOriginY = scrollView.convert(CGPoint.zero, to: view).y
+        return scrollOriginY + scrollView.contentSize.height
+    }
 }
 
 private extension UIImage {
@@ -90,6 +104,37 @@ private struct PixelBuffer {
             return true
         }
         return false
+    }
+}
+
+private extension UIView {
+    @MainActor
+    func dominantScrollView(probeWidth: CGFloat) -> UIScrollView? {
+        var best: UIScrollView?
+        var bestArea: CGFloat = 0
+        enumerateScrollViews { scrollView in
+            guard !scrollView.isHidden, scrollView.alpha > 0 else { return }
+            let size = scrollView.bounds.size
+            // Only consider scroll views that take up most of the width — this
+            // excludes incidental horizontal carousels and nested helpers.
+            guard size.width >= probeWidth * 0.6, size.height > 0 else { return }
+            let area = size.width * size.height
+            if area > bestArea {
+                best = scrollView
+                bestArea = area
+            }
+        }
+        return best
+    }
+
+    @MainActor
+    private func enumerateScrollViews(_ body: (UIScrollView) -> Void) {
+        if let scrollView = self as? UIScrollView {
+            body(scrollView)
+        }
+        for subview in subviews {
+            subview.enumerateScrollViews(body)
+        }
     }
 }
 
