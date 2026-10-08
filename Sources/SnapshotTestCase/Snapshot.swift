@@ -241,7 +241,13 @@ private extension Snapshot.TestCase {
         let snapshot = try await SnapshotWindow.shared.new()
             .frame(CGRect(origin: .zero, size: size))
             .rootViewController(viewController)
-            .render { try await renderView(view: view, in: renderSize, sizeToFit: config.sizeToFit) }
+            .render {
+                try await renderView(
+                    view: view,
+                    in: renderSize,
+                    sizeToFit: config.sizeToFit ? sizeToFit : nil
+                )
+            }
         if config.sizeToFit {
             return sizeToFit.crop(snapshot, topInsetPoints: Snapshot.renderOffsetY)
         }
@@ -249,14 +255,28 @@ private extension Snapshot.TestCase {
     }
 
     @MainActor
-    private func renderView(view: UIView, in size: CGSize, sizeToFit: Bool) async throws -> UIImage {
+    private func renderView(
+        view: UIView,
+        in size: CGSize,
+        sizeToFit: SizeToFit?
+    ) async throws -> UIImage {
         try await onAppear()
         try await Task.sleep(for: .milliseconds(100))
-        if sizeToFit {
+        if let sizeToFit {
             view.frame = CGRect(origin: .zero, size: size)
             view.setNeedsLayout()
             view.layoutIfNeeded()
             try await Task.sleep(for: .milliseconds(100))
+            if let contentHeight = sizeToFit.contentHeight(for: view, probeWidth: size.width) {
+                let bottomPadding = Snapshot.renderPaddingBottom + Snapshot.renderOffsetY
+                let finalHeight = min(size.height, max(0, contentHeight) + bottomPadding)
+                let finalSize = CGSize(width: size.width, height: finalHeight)
+                view.frame = CGRect(origin: .zero, size: finalSize)
+                view.setNeedsLayout()
+                view.layoutIfNeeded()
+                try await Task.sleep(for: .milliseconds(100))
+                return try await renderSnapshot(view: view, in: finalSize)
+            }
         }
         return try await renderSnapshot(view: view, in: size)
     }
