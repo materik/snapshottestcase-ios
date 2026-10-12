@@ -4,7 +4,7 @@ import UIKit
 
 let snapshot = Snapshot()
 
-public protocol SnapshotTestCase: AnyObject { }
+public protocol SnapshotTestCase { }
 
 public extension SnapshotTestCase {
     func verifySnapshot(
