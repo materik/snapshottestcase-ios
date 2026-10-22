@@ -168,26 +168,41 @@ private extension Snapshot {
     }
 }
 
+@MainActor
 private final class SnapshotWindow {
-    let window: UIWindow
+    static let shared = SnapshotWindow()
 
-    @MainActor
-    init() {
-        window = UIWindow()
+    private let window = UIWindow()
+    private var isBusy = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    private func acquire() async {
+        guard isBusy else {
+            isBusy = true
+            return
+        }
+        await withCheckedContinuation { waiters.append($0) }
+        isBusy = true
     }
 
-    func frame(_ frame: CGRect) -> Self {
+    private func release() {
+        if let next = waiters.first {
+            waiters.removeFirst()
+            next.resume()
+        } else {
+            isBusy = false
+        }
+    }
+
+    func use(
+        frame: CGRect,
+        rootViewController viewController: UIViewController,
+        render: () async throws -> UIImage
+    ) async throws -> UIImage {
+        await acquire()
+        defer { release() }
         window.frame = frame
-        return self
-    }
-
-    func rootViewController(_ viewController: UIViewController) -> Self {
         window.rootViewController = viewController
-        return self
-    }
-
-    @MainActor
-    func render(_ render: () async throws -> UIImage) async throws -> UIImage {
         window.isHidden = false
         let snapshot = try await render()
         window.isHidden = true
@@ -225,16 +240,16 @@ private extension Snapshot.TestCase {
         let renderSize = config.sizeToFit
             ? CGSize(width: size.width, height: sizeToFit.probeHeight)
             : size
-        let snapshot = try await SnapshotWindow()
-            .frame(CGRect(origin: .zero, size: size))
-            .rootViewController(viewController)
-            .render {
-                try await renderView(
-                    view: view,
-                    in: renderSize,
-                    sizeToFit: config.sizeToFit ? sizeToFit : nil
-                )
-            }
+        let snapshot = try await SnapshotWindow.shared.use(
+            frame: CGRect(origin: .zero, size: size),
+            rootViewController: viewController
+        ) {
+            try await renderView(
+                view: view,
+                in: renderSize,
+                sizeToFit: config.sizeToFit ? sizeToFit : nil
+            )
+        }
         if config.sizeToFit {
             return sizeToFit.crop(snapshot, topInsetPoints: Snapshot.renderOffsetY)
         }
