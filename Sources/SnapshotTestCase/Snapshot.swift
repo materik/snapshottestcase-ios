@@ -168,44 +168,31 @@ private extension Snapshot {
     }
 }
 
-private class SnapshotWindow {
-    static var shared = SnapshotWindow()
-
-    @Published var window: UIWindow?
+private final class SnapshotWindow {
+    let window: UIWindow
 
     @MainActor
-    func new() async throws -> Self {
-        if window == nil {
-            window = UIWindow()
-            return self
-        }
-        for await window in $window.values {
-            if window == nil {
-                break
-            } else {
-                try await Task.sleep(for: .milliseconds(10))
-            }
-        }
-        return try await new()
+    init() {
+        window = UIWindow()
     }
 
     func frame(_ frame: CGRect) -> Self {
-        window?.frame = frame
+        window.frame = frame
         return self
     }
 
     func rootViewController(_ viewController: UIViewController) -> Self {
-        window?.rootViewController = viewController
+        window.rootViewController = viewController
         return self
     }
 
     @MainActor
     func render(_ render: () async throws -> UIImage) async throws -> UIImage {
-        window?.isHidden = false
+        window.isHidden = false
         let snapshot = try await render()
-        window?.isHidden = true
-        window?.removeFromSuperview()
-        window = nil
+        window.isHidden = true
+        window.rootViewController = nil
+        await Task.yield()
         return snapshot
     }
 }
@@ -238,7 +225,7 @@ private extension Snapshot.TestCase {
         let renderSize = config.sizeToFit
             ? CGSize(width: size.width, height: sizeToFit.probeHeight)
             : size
-        let snapshot = try await SnapshotWindow.shared.new()
+        let snapshot = try await SnapshotWindow()
             .frame(CGRect(origin: .zero, size: size))
             .rootViewController(viewController)
             .render {
