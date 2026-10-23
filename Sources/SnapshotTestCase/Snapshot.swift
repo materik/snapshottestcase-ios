@@ -206,6 +206,8 @@ private final class SnapshotWindow {
         window.isHidden = false
         let snapshot = try await render()
         window.isHidden = true
+        viewController.beginAppearanceTransition(false, animated: false)
+        viewController.endAppearanceTransition()
         window.rootViewController = nil
         await Task.yield()
         return snapshot
