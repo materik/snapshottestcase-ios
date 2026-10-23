@@ -174,24 +174,41 @@ private final class SnapshotWindow {
 
     private let window = UIWindow()
     private var isBusy = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var waiters: [UUID: CheckedContinuation<Void, Error>] = [:]
+    private var waiterOrder: [UUID] = []
 
-    private func acquire() async {
+    private func acquire() async throws {
         guard isBusy else {
             isBusy = true
             return
         }
-        await withCheckedContinuation { waiters.append($0) }
-        isBusy = true
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                waiters[id] = continuation
+                waiterOrder.append(id)
+            }
+        } onCancel: {
+            Task { @MainActor in self.cancelWaiter(id) }
+        }
+    }
+
+    private func cancelWaiter(_ id: UUID) {
+        if let continuation = waiters.removeValue(forKey: id) {
+            waiterOrder.removeAll { $0 == id }
+            continuation.resume(throwing: CancellationError())
+        }
     }
 
     private func release() {
-        if let next = waiters.first {
-            waiters.removeFirst()
-            next.resume()
-        } else {
-            isBusy = false
+        while let nextId = waiterOrder.first {
+            waiterOrder.removeFirst()
+            if let continuation = waiters.removeValue(forKey: nextId) {
+                continuation.resume()
+                return
+            }
         }
+        isBusy = false
     }
 
     func use(
@@ -199,7 +216,7 @@ private final class SnapshotWindow {
         rootViewController viewController: UIViewController,
         render: () async throws -> UIImage
     ) async throws -> UIImage {
-        await acquire()
+        try await acquire()
         defer { release() }
         window.frame = frame
         window.rootViewController = viewController
