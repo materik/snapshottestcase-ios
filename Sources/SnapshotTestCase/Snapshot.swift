@@ -171,46 +171,39 @@ private extension Snapshot {
 private class SnapshotWindow {
     static var shared = SnapshotWindow()
 
-    @Published var isBusy = false
-    var window: UIWindow?
+    @Published private var isAcquired = false
+    private var window: UIWindow?
 
     @MainActor
-    func new() async throws -> Self {
-        if !isBusy {
-            isBusy = true
-            return self
+    func acquire() async throws {
+        if !isAcquired {
+            isAcquired = true
+            return
         }
-        for await isBusy in $isBusy.values {
-            if !isBusy {
+        for await isAcquired in $isAcquired.values {
+            if !isAcquired {
                 break
             } else {
                 try await Task.sleep(for: .milliseconds(10))
             }
         }
-        return try await new()
+        try await acquire()
     }
 
-    // The view controller is built while holding the slot, so global state the builder sets up
-    // (e.g. dependencies) can't be overwritten by a concurrent test before the render completes.
-    // The window is still created after the view controller, as some views depend on that order.
     @MainActor
-    func render(
-        frame: CGRect,
-        _ viewControllerBuilder: () throws -> (UIViewController, UIView),
-        _ render: (UIView) async throws -> UIImage
-    ) async throws -> UIImage {
-        defer {
-            window?.isHidden = true
-            window?.removeFromSuperview()
-            window = nil
-            isBusy = false
-        }
-        let (viewController, view) = try viewControllerBuilder()
+    func show(_ viewController: UIViewController, in frame: CGRect) {
         window = UIWindow()
         window?.frame = frame
         window?.rootViewController = viewController
         window?.isHidden = false
-        return try await render(view)
+    }
+
+    @MainActor
+    func release() {
+        window?.isHidden = true
+        window?.removeFromSuperview()
+        window = nil
+        isAcquired = false
     }
 }
 
@@ -241,16 +234,18 @@ private extension Snapshot.TestCase {
         let renderSize = config.sizeToFit
             ? CGSize(width: size.width, height: sizeToFit.probeHeight)
             : size
-        let snapshot = try await SnapshotWindow.shared.new()
-            .render(frame: CGRect(origin: .zero, size: size)) {
-                try create(with: config, in: size)
-            } _: { view in
-                try await renderView(
-                    view: view,
-                    in: renderSize,
-                    sizeToFit: config.sizeToFit ? sizeToFit : nil
-                )
-            }
+        // The view controller is built while holding the window, so global state the builder sets up
+        // (e.g. dependencies) can't be overwritten by a concurrent test before the render completes.
+        // The window is still shown after the view controller is built, as some views depend on that.
+        try await SnapshotWindow.shared.acquire()
+        defer { SnapshotWindow.shared.release() }
+        let (viewController, view) = try create(with: config, in: size)
+        SnapshotWindow.shared.show(viewController, in: CGRect(origin: .zero, size: size))
+        let snapshot = try await renderView(
+            view: view,
+            in: renderSize,
+            sizeToFit: config.sizeToFit ? sizeToFit : nil
+        )
         if config.sizeToFit {
             return sizeToFit.crop(snapshot, topInsetPoints: Snapshot.renderOffsetY)
         }
