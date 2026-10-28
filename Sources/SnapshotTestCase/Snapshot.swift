@@ -171,16 +171,17 @@ private extension Snapshot {
 private class SnapshotWindow {
     static var shared = SnapshotWindow()
 
-    @Published var window: UIWindow?
+    @Published var isBusy = false
+    var window: UIWindow?
 
     @MainActor
     func new() async throws -> Self {
-        if window == nil {
-            window = UIWindow()
+        if !isBusy {
+            isBusy = true
             return self
         }
-        for await window in $window.values {
-            if window == nil {
+        for await isBusy in $isBusy.values {
+            if !isBusy {
                 break
             } else {
                 try await Task.sleep(for: .milliseconds(10))
@@ -189,15 +190,12 @@ private class SnapshotWindow {
         return try await new()
     }
 
-    func frame(_ frame: CGRect) -> Self {
-        window?.frame = frame
-        return self
-    }
-
-    // The view controller is built inside the window slot, so global state the builder sets up
+    // The view controller is built while holding the slot, so global state the builder sets up
     // (e.g. dependencies) can't be overwritten by a concurrent test before the render completes.
+    // The window is still created after the view controller, as some views depend on that order.
     @MainActor
     func render(
+        frame: CGRect,
         _ viewControllerBuilder: () throws -> (UIViewController, UIView),
         _ render: (UIView) async throws -> UIImage
     ) async throws -> UIImage {
@@ -205,8 +203,11 @@ private class SnapshotWindow {
             window?.isHidden = true
             window?.removeFromSuperview()
             window = nil
+            isBusy = false
         }
         let (viewController, view) = try viewControllerBuilder()
+        window = UIWindow()
+        window?.frame = frame
         window?.rootViewController = viewController
         window?.isHidden = false
         return try await render(view)
@@ -241,8 +242,7 @@ private extension Snapshot.TestCase {
             ? CGSize(width: size.width, height: sizeToFit.probeHeight)
             : size
         let snapshot = try await SnapshotWindow.shared.new()
-            .frame(CGRect(origin: .zero, size: size))
-            .render {
+            .render(frame: CGRect(origin: .zero, size: size)) {
                 try create(with: config, in: size)
             } _: { view in
                 try await renderView(
