@@ -194,19 +194,22 @@ private class SnapshotWindow {
         return self
     }
 
-    func rootViewController(_ viewController: UIViewController) -> Self {
-        window?.rootViewController = viewController
-        return self
-    }
-
+    // The view controller is built inside the window slot, so global state the builder sets up
+    // (e.g. dependencies) can't be overwritten by a concurrent test before the render completes.
     @MainActor
-    func render(_ render: () async throws -> UIImage) async throws -> UIImage {
+    func render(
+        _ viewControllerBuilder: () throws -> (UIViewController, UIView),
+        _ render: (UIView) async throws -> UIImage
+    ) async throws -> UIImage {
+        defer {
+            window?.isHidden = true
+            window?.removeFromSuperview()
+            window = nil
+        }
+        let (viewController, view) = try viewControllerBuilder()
+        window?.rootViewController = viewController
         window?.isHidden = false
-        let snapshot = try await render()
-        window?.isHidden = true
-        window?.removeFromSuperview()
-        window = nil
-        return snapshot
+        return try await render(view)
     }
 }
 
@@ -233,15 +236,15 @@ private extension Snapshot.TestCase {
     @MainActor
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
         let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
-        let (viewController, view) = try create(with: config, in: size)
         let sizeToFit = SizeToFit()
         let renderSize = config.sizeToFit
             ? CGSize(width: size.width, height: sizeToFit.probeHeight)
             : size
         let snapshot = try await SnapshotWindow.shared.new()
             .frame(CGRect(origin: .zero, size: size))
-            .rootViewController(viewController)
             .render {
+                try create(with: config, in: size)
+            } _: { view in
                 try await renderView(
                     view: view,
                     in: renderSize,
