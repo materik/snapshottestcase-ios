@@ -234,9 +234,10 @@ private extension Snapshot.TestCase {
         let renderSize = config.sizeToFit
             ? CGSize(width: size.width, height: sizeToFit.probeHeight)
             : size
-        // The view controller is built while holding the window, so global state the builder sets up
-        // (e.g. dependencies) can't be overwritten by a concurrent test before the render completes.
-        // The window is still shown after the view controller is built, as some views depend on that.
+        // The view controller is built while holding the window, so global state the builder
+        // sets up (e.g. dependencies) can't be overwritten by a concurrent test before the render
+        // completes. The window is still shown after the view controller is built, as some views
+        // depend on that.
         try await SnapshotWindow.shared.acquire()
         defer { SnapshotWindow.shared.release() }
         let (viewController, view) = try create(with: config, in: size)
