@@ -171,42 +171,39 @@ private extension Snapshot {
 private class SnapshotWindow {
     static var shared = SnapshotWindow()
 
-    @Published var window: UIWindow?
+    @Published private var isAcquired = false
+    private var window: UIWindow?
 
     @MainActor
-    func new() async throws -> Self {
-        if window == nil {
-            window = UIWindow()
-            return self
+    func acquire() async throws {
+        if !isAcquired {
+            isAcquired = true
+            return
         }
-        for await window in $window.values {
-            if window == nil {
+        for await isAcquired in $isAcquired.values {
+            if !isAcquired {
                 break
             } else {
                 try await Task.sleep(for: .milliseconds(10))
             }
         }
-        return try await new()
-    }
-
-    func frame(_ frame: CGRect) -> Self {
-        window?.frame = frame
-        return self
-    }
-
-    func rootViewController(_ viewController: UIViewController) -> Self {
-        window?.rootViewController = viewController
-        return self
+        try await acquire()
     }
 
     @MainActor
-    func render(_ render: () async throws -> UIImage) async throws -> UIImage {
+    func show(_ viewController: UIViewController, in frame: CGRect) {
+        window = UIWindow()
+        window?.frame = frame
+        window?.rootViewController = viewController
         window?.isHidden = false
-        let snapshot = try await render()
+    }
+
+    @MainActor
+    func release() {
         window?.isHidden = true
         window?.removeFromSuperview()
         window = nil
-        return snapshot
+        isAcquired = false
     }
 }
 
@@ -233,21 +230,23 @@ private extension Snapshot.TestCase {
     @MainActor
     private func takeSnapshot(with config: SnapshotConfig.Config) async throws -> UIImage {
         let size = config.size + CGSize(width: 0, height: Snapshot.renderOffsetY)
-        let (viewController, view) = try create(with: config, in: size)
         let sizeToFit = SizeToFit()
         let renderSize = config.sizeToFit
             ? CGSize(width: size.width, height: sizeToFit.probeHeight)
             : size
-        let snapshot = try await SnapshotWindow.shared.new()
-            .frame(CGRect(origin: .zero, size: size))
-            .rootViewController(viewController)
-            .render {
-                try await renderView(
-                    view: view,
-                    in: renderSize,
-                    sizeToFit: config.sizeToFit ? sizeToFit : nil
-                )
-            }
+        // The view controller is built while holding the window, so global state the builder
+        // sets up (e.g. dependencies) can't be overwritten by a concurrent test before the render
+        // completes. The window is still shown after the view controller is built, as some views
+        // depend on that.
+        try await SnapshotWindow.shared.acquire()
+        defer { SnapshotWindow.shared.release() }
+        let (viewController, view) = try create(with: config, in: size)
+        SnapshotWindow.shared.show(viewController, in: CGRect(origin: .zero, size: size))
+        let snapshot = try await renderView(
+            view: view,
+            in: renderSize,
+            sizeToFit: config.sizeToFit ? sizeToFit : nil
+        )
         if config.sizeToFit {
             return sizeToFit.crop(snapshot, topInsetPoints: Snapshot.renderOffsetY)
         }
