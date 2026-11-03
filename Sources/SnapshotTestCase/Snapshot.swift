@@ -277,21 +277,18 @@ private extension Snapshot.TestCase {
     }
 
     @MainActor
-    private func waitForSteadyState(view: UIView, maxIterations: Int = 100) async {
+    private func waitForSteadyState(view: UIView, maxIterations: Int = 60) async {
         var previous: Data?
         var stableCount = 0
         for _ in 0..<maxIterations {
-            await Task.yield()
-            await withCheckedContinuation { continuation in
-                DispatchQueue.main.async { continuation.resume() }
-            }
+            try? await Task.sleep(for: .milliseconds(50))
             view.setNeedsLayout()
             view.layoutIfNeeded()
             CATransaction.flush()
             let current = captureFingerprint(view: view)
             if current == previous {
                 stableCount += 1
-                if stableCount >= 5 {
+                if stableCount >= 3 {
                     return
                 }
             } else {
