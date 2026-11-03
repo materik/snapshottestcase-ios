@@ -260,24 +260,73 @@ private extension Snapshot.TestCase {
         sizeToFit: SizeToFit?
     ) async throws -> UIImage {
         try await onAppear()
-        try await Task.sleep(for: .milliseconds(100))
+        await waitForSteadyState(view: view)
         if let sizeToFit {
             view.frame = CGRect(origin: .zero, size: size)
-            view.setNeedsLayout()
-            view.layoutIfNeeded()
-            try await Task.sleep(for: .milliseconds(100))
+            await waitForSteadyState(view: view)
             if let contentHeight = sizeToFit.contentHeight(for: view, probeWidth: size.width) {
                 let bottomPadding = Snapshot.renderPaddingBottom + Snapshot.renderOffsetY
                 let finalHeight = min(size.height, max(0, contentHeight) + bottomPadding)
                 let finalSize = CGSize(width: size.width, height: finalHeight)
                 view.frame = CGRect(origin: .zero, size: finalSize)
-                view.setNeedsLayout()
-                view.layoutIfNeeded()
-                try await Task.sleep(for: .milliseconds(100))
+                await waitForSteadyState(view: view)
                 return try await renderSnapshot(view: view, in: finalSize)
             }
         }
         return try await renderSnapshot(view: view, in: size)
+    }
+
+    @MainActor
+    private func waitForSteadyState(view: UIView, maxIterations: Int = 100) async {
+        var previous: Data?
+        var stableCount = 0
+        for _ in 0..<maxIterations {
+            await Task.yield()
+            await withCheckedContinuation { continuation in
+                DispatchQueue.main.async { continuation.resume() }
+            }
+            view.setNeedsLayout()
+            view.layoutIfNeeded()
+            CATransaction.flush()
+            let current = captureFingerprint(view: view)
+            if current == previous {
+                stableCount += 1
+                if stableCount >= 5 {
+                    return
+                }
+            } else {
+                stableCount = 0
+                previous = current
+            }
+        }
+    }
+
+    @MainActor
+    private func captureFingerprint(view: UIView) -> Data {
+        let bounds = view.bounds
+        guard bounds.width > 0, bounds.height > 0 else {
+            return Data()
+        }
+        let targetWidth: CGFloat = 64
+        let scale = targetWidth / max(bounds.width, 1)
+        let targetSize = CGSize(
+            width: targetWidth,
+            height: max(1, (bounds.height * scale).rounded())
+        )
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+        let image = renderer.image { context in
+            context.cgContext.scaleBy(x: scale, y: scale)
+            view.layer.render(in: context.cgContext)
+        }
+        guard let cgImage = image.cgImage,
+              let provider = cgImage.dataProvider,
+              let data = provider.data as Data? else {
+            return Data()
+        }
+        return data
     }
 
     @MainActor
