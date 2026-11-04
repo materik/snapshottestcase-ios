@@ -301,30 +301,32 @@ private extension Snapshot.TestCase {
 
     @MainActor
     private func captureFingerprint(view: UIView) -> Data {
-        let bounds = view.bounds
-        guard bounds.width > 0, bounds.height > 0 else {
-            return Data()
+        autoreleasepool {
+            let bounds = view.bounds
+            guard bounds.width > 0, bounds.height > 0 else {
+                return Data()
+            }
+            let targetWidth: CGFloat = 64
+            let scale = targetWidth / max(bounds.width, 1)
+            let targetSize = CGSize(
+                width: targetWidth,
+                height: max(1, (bounds.height * scale).rounded())
+            )
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1
+            format.opaque = true
+            let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+            let image = renderer.image { context in
+                context.cgContext.scaleBy(x: scale, y: scale)
+                view.layer.render(in: context.cgContext)
+            }
+            guard let cgImage = image.cgImage,
+                  let provider = cgImage.dataProvider,
+                  let data = provider.data as Data? else {
+                return Data()
+            }
+            return data
         }
-        let targetWidth: CGFloat = 64
-        let scale = targetWidth / max(bounds.width, 1)
-        let targetSize = CGSize(
-            width: targetWidth,
-            height: max(1, (bounds.height * scale).rounded())
-        )
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        format.opaque = true
-        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
-        let image = renderer.image { context in
-            context.cgContext.scaleBy(x: scale, y: scale)
-            view.layer.render(in: context.cgContext)
-        }
-        guard let cgImage = image.cgImage,
-              let provider = cgImage.dataProvider,
-              let data = provider.data as Data? else {
-            return Data()
-        }
-        return data
     }
 
     @MainActor
