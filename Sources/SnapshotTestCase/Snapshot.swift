@@ -260,16 +260,16 @@ private extension Snapshot.TestCase {
         sizeToFit: SizeToFit?
     ) async throws -> UIImage {
         try await onAppear()
-        await waitForSteadyState(view: view)
+        try await waitForSteadyState(view: view)
         if let sizeToFit {
             view.frame = CGRect(origin: .zero, size: size)
-            await waitForSteadyState(view: view)
+            try await waitForSteadyState(view: view)
             if let contentHeight = sizeToFit.contentHeight(for: view, probeWidth: size.width) {
                 let bottomPadding = Snapshot.renderPaddingBottom + Snapshot.renderOffsetY
                 let finalHeight = min(size.height, max(0, contentHeight) + bottomPadding)
                 let finalSize = CGSize(width: size.width, height: finalHeight)
                 view.frame = CGRect(origin: .zero, size: finalSize)
-                await waitForSteadyState(view: view)
+                try await waitForSteadyState(view: view)
                 return try await renderSnapshot(view: view, in: finalSize)
             }
         }
@@ -277,11 +277,12 @@ private extension Snapshot.TestCase {
     }
 
     @MainActor
-    private func waitForSteadyState(view: UIView, maxIterations: Int = 60) async {
+    private func waitForSteadyState(view: UIView, maxIterations: Int = 60) async throws {
         var previous: Data?
         var stableCount = 0
         for _ in 0..<maxIterations {
-            try? await Task.sleep(for: .milliseconds(50))
+            try Task.checkCancellation()
+            try await Task.sleep(for: .milliseconds(50))
             view.setNeedsLayout()
             view.layoutIfNeeded()
             CATransaction.flush()
