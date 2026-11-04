@@ -282,7 +282,7 @@ private extension Snapshot.TestCase {
         var stableCount = 0
         for _ in 0..<maxIterations {
             try Task.checkCancellation()
-            try await Task.sleep(for: .milliseconds(50))
+            try await Task.sleep(for: .milliseconds(25))
             view.setNeedsLayout()
             view.layoutIfNeeded()
             CATransaction.flush()
